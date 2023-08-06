@@ -53,7 +53,7 @@ typedef enum
  */
 typedef enum
 {
-	eBOOT_STATE_IDLE = 0,   /**<Idle state - waiting for request */
+    eBOOT_STATE_IDLE = 0,   /**<Idle state - waiting for request */
 	eBOOT_STATE_PREPARE,    /**<Preparing FLASH memory */
 	eBOOT_STATE_FLASH,      /**<Flashing memory with new software */
 	eBOOT_STATE_VALIDATE,   /**<Validation of software image */
@@ -66,9 +66,9 @@ typedef enum
 ////////////////////////////////////////////////////////////////////////////////
 // Functions
 ////////////////////////////////////////////////////////////////////////////////
-boot_status_t 	boot_init		(void);
-boot_status_t 	boot_hndl		(void);
-boot_state_t 	boot_get_state	(void);
+boot_status_t   boot_init       (void);
+boot_status_t   boot_hndl       (void);
+boot_state_t    boot_get_state  (void);
 
 // Events callback
 // TODO: ...
