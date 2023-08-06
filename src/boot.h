@@ -53,11 +53,11 @@ typedef enum
  */
 typedef enum
 {
-	eBOOT_STATE_IDLE = 0,	/**<Idle state - waiting for request */
-	eBOOT_STATE_PREPARE,	/**<Preparing FLASH memory */
-	eBOOT_STATE_FLASH,		/**<Flashing memory with new software */
-	eBOOT_STATE_VALIDATE,	/**<Validation of software image */
-	eBOOT_STATE_EXIT,		/**<Exit bootloader - Enter application */
+	eBOOT_STATE_IDLE = 0,   /**<Idle state - waiting for request */
+	eBOOT_STATE_PREPARE,    /**<Preparing FLASH memory */
+	eBOOT_STATE_FLASH,      /**<Flashing memory with new software */
+	eBOOT_STATE_VALIDATE,   /**<Validation of software image */
+	eBOOT_STATE_EXIT,       /**<Exit bootloader - Enter application */
 
 	eBOOT_STATE_NUM_OF
 } boot_state_t;
