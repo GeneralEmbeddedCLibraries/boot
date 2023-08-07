@@ -60,6 +60,35 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 
+boot_status_t boot_init(void)
+{
+    boot_status_t status = eBOOT_OK;
+
+    // TODO: ...
+
+    return status;
+}
+
+
+boot_status_t boot_hndl(void)
+{
+    boot_status_t status = eBOOT_OK;
+
+    // TODO: ...
+
+    return status;
+}
+
+
+boot_state_t boot_get_state(void)
+{
+    boot_state_t state = eBOOT_STATE_IDLE;
+
+    // TODO: ...
+
+    return state;
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
