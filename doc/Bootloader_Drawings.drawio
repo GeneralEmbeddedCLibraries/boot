@@ -1,0 +1,76 @@
+<mxfile host="Electron" modified="2023-08-09T13:20:21.468Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/21.2.1 Chrome/112.0.5615.87 Electron/24.1.2 Safari/537.36" etag="Sghqf3ip9qxWfwhpKMpJ" version="21.2.1" type="device">
+  <diagram name="FSM" id="AAyAqEpNRwrtVDSvg0aT">
+    <mxGraphModel dx="978" dy="654" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="FaN-BZ00DcrJmtZF_NVr-2" value="IDLE" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fontStyle=3;fillColor=#00CC00;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="210" y="400" width="70" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="FaN-BZ00DcrJmtZF_NVr-3" value="PREPARE" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fontStyle=3;fillColor=#00CC00;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="500" y="400" width="70" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="FaN-BZ00DcrJmtZF_NVr-4" value="FLASHING" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fontStyle=3;fillColor=#00CC00;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="502.5" y="620" width="70" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="FaN-BZ00DcrJmtZF_NVr-5" value="EXIT" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fontStyle=3;fillColor=#00CC00;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="210" y="620" width="70" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="FaN-BZ00DcrJmtZF_NVr-6" value="" style="endArrow=classic;html=1;rounded=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="FaN-BZ00DcrJmtZF_NVr-2" target="FaN-BZ00DcrJmtZF_NVr-3">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="390" y="520" as="sourcePoint" />
+            <mxPoint x="440" y="470" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="FaN-BZ00DcrJmtZF_NVr-7" value="&quot;Prepare&quot; command" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="380" y="400" width="60" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="FaN-BZ00DcrJmtZF_NVr-8" value="" style="endArrow=classic;html=1;rounded=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="FaN-BZ00DcrJmtZF_NVr-3" target="FaN-BZ00DcrJmtZF_NVr-4">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="340" y="445" as="sourcePoint" />
+            <mxPoint x="510" y="445" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="FaN-BZ00DcrJmtZF_NVr-9" value="Preparing finished with success" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="540" y="530" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="FaN-BZ00DcrJmtZF_NVr-10" value="" style="endArrow=classic;html=1;rounded=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="FaN-BZ00DcrJmtZF_NVr-4" target="FaN-BZ00DcrJmtZF_NVr-5">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="320" y="790" as="sourcePoint" />
+            <mxPoint x="370" y="740" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="FaN-BZ00DcrJmtZF_NVr-11" value="&quot;Exit&quot; command" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="380" y="640" width="60" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="FaN-BZ00DcrJmtZF_NVr-12" value="" style="endArrow=classic;html=1;rounded=0;entryX=1;entryY=1;entryDx=0;entryDy=0;exitX=0;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="FaN-BZ00DcrJmtZF_NVr-3" target="FaN-BZ00DcrJmtZF_NVr-2">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="370" y="540" as="sourcePoint" />
+            <mxPoint x="420" y="490" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="FaN-BZ00DcrJmtZF_NVr-13" value="FW to big or&lt;br&gt;FW version not supported or&lt;br&gt;Timeout" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="350" y="460" width="165" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="FaN-BZ00DcrJmtZF_NVr-14" value="" style="endArrow=classic;html=1;rounded=0;entryX=1;entryY=1;entryDx=0;entryDy=0;exitX=0;exitY=0;exitDx=0;exitDy=0;" edge="1" parent="1" source="FaN-BZ00DcrJmtZF_NVr-4" target="FaN-BZ00DcrJmtZF_NVr-2">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="130" y="570" as="sourcePoint" />
+            <mxPoint x="180" y="520" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="FaN-BZ00DcrJmtZF_NVr-15" value="Writing to FLASH error or&lt;br&gt;Timeout" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;rotation=30;" vertex="1" parent="1">
+          <mxGeometry x="280" y="540" width="165" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="FaN-BZ00DcrJmtZF_NVr-16" value="" style="endArrow=classic;html=1;rounded=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;" edge="1" parent="1" source="FaN-BZ00DcrJmtZF_NVr-5" target="FaN-BZ00DcrJmtZF_NVr-2">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="140" y="600" as="sourcePoint" />
+            <mxPoint x="190" y="550" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="FaN-BZ00DcrJmtZF_NVr-17" value="Validation error" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="115" y="565" width="165" height="40" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
