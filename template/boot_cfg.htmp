@@ -95,6 +95,16 @@
  */
 #define BOOT_CFG_ASSERT_EN                       ( 1 )
 
+/**
+ *  Static assert
+ */
+#define BOOT_CFG_STATIC_ASSERT(x)                _Static_assert(x)
+
+/**
+ *  Weak compiler directive
+ */
+#define __BOOT_CFG_WEAK__                        __attribute__((weak))
+
 // USER CODE END...
 
 /**
