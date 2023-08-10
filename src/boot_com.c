@@ -26,6 +26,7 @@
 
 #include "boot_com.h"
 #include "../../boot_cfg.h"
+#include "../../boot_if.h"
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -33,20 +34,25 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 /**
+ *  Bootloader message preamble
+ */
+#define BOOT_MSG_PREAMBLE_VAL               ((uint16_t)( 0x07B0U ))
+
+/**
  *  Booloader communication commands
  */
 typedef enum
 {
-    eBOOT_CMD_CONNECT       = (uint8_t)( 0x10U ),       /**<Connect command */
-    eBOOT_CMD_CONNECT_RSP   = (uint8_t)( 0x11U ),       /**<Connect response command*/
-    eBOOT_CMD_PREPARE       = (uint8_t)( 0x20U ),       /**<Prepare command */
-    eBOOT_CMD_PREPARE_RSP   = (uint8_t)( 0x21U ),       /**<Prepare response command*/
-    eBOOT_CMD_FLASH         = (uint8_t)( 0x30U ),       /**<Flash data command */
-    eBOOT_CMD_FLASH_RSP     = (uint8_t)( 0x31U ),       /**<Flash data response command*/
-    eBOOT_CMD_EXIT          = (uint8_t)( 0x40U ),       /**<Exit command */
-    eBOOT_CMD_EXIT_RSP      = (uint8_t)( 0x41U ),       /**<Exit response command*/
-    eBOOT_CMD_INFO          = (uint8_t)( 0xA0U ),       /**<Information command */
-    eBOOT_CMD_INFO_RSP      = (uint8_t)( 0xA1U ),       /**<Information response command*/
+    eBOOT_MSG_CMD_CONNECT       = (uint8_t)( 0x10U ),       /**<Connect command */
+    eBOOT_MSG_CMD_CONNECT_RSP   = (uint8_t)( 0x11U ),       /**<Connect response command*/
+    eBOOT_MSG_CMD_PREPARE       = (uint8_t)( 0x20U ),       /**<Prepare command */
+    eBOOT_MSG_CMD_PREPARE_RSP   = (uint8_t)( 0x21U ),       /**<Prepare response command*/
+    eBOOT_MSG_CMD_FLASH         = (uint8_t)( 0x30U ),       /**<Flash data command */
+    eBOOT_MSG_CMD_FLASH_RSP     = (uint8_t)( 0x31U ),       /**<Flash data response command*/
+    eBOOT_MSG_CMD_EXIT          = (uint8_t)( 0x40U ),       /**<Exit command */
+    eBOOT_MSG_CMD_EXIT_RSP      = (uint8_t)( 0x41U ),       /**<Exit response command*/
+    eBOOT_MSG_CMD_INFO          = (uint8_t)( 0xA0U ),       /**<Information command */
+    eBOOT_MSG_CMD_INFO_RSP      = (uint8_t)( 0xA1U ),       /**<Information response command*/
 } boot_cmd_opt_t;
 
 /**
@@ -179,11 +185,29 @@ boot_status_t boot_com_hndl(void)
 }
 
 
-
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Send Connect Message
+*
+* @return       void
+*/
+////////////////////////////////////////////////////////////////////////////////
 boot_status_t boot_com_send_connect(void)
 {
     boot_status_t status = eBOOT_OK;
+    boot_header_t header = { .U = 0U };
 
+    // Assemble command
+    header.field.preamble   = BOOT_MSG_PREAMBLE_VAL;
+    header.field.length     = 0U;
+    header.field.source     = eCOM_MSG_SRC_BOOT_MANAGER;
+    header.field.command    = eBOOT_MSG_CMD_CONNECT;
+
+    // Calculate CRC
+    header.field.crc = boot_com_calc_crc( &header.U, ( sizeof(boot_header_t) - sizeof(header.field.crc)));
+
+    // Send command
+    status = boot_if_transmit( &header.U, sizeof( boot_header_t ));
 
     return status;
 }
@@ -289,7 +313,6 @@ boot_status_t boot_com_send_info_rsp(const uint32_t boot_ver, const boot_status_
 
     return status;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /**

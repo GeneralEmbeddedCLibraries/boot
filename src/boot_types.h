@@ -33,11 +33,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 /**
- *  Bootloader message preamble
- */
-#define BOOT_MSG_PREAMBLE_VAL               ((uint16_t)( 0x07B0U ))
-
-/**
  *  Bootloader status
  */
 typedef enum
