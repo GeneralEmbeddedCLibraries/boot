@@ -1,0 +1,142 @@
+// Copyright (c) 2023 Ziga Miklosic
+// All Rights Reserved
+// This software is under MIT licence (https://opensource.org/licenses/MIT)
+////////////////////////////////////////////////////////////////////////////////
+/**
+*@file      boot_cfg.h
+*@brief     Bootloader Configuration
+*@author    Ziga Miklosic
+*@email     ziga.miklosic@gmail.com
+*@date      06.08.2023
+*@version   V0.1.0
+*/
+////////////////////////////////////////////////////////////////////////////////
+/**
+*@addtogroup BOOT_CFG_API
+* @{ <!-- BEGIN GROUP -->
+*
+*/
+////////////////////////////////////////////////////////////////////////////////
+
+#ifndef __BOOT_CFG_H
+#define __BOOT_CFG_H
+
+////////////////////////////////////////////////////////////////////////////////
+// Includes
+////////////////////////////////////////////////////////////////////////////////
+#include <stdlib.h>
+#include <stdint.h>
+#include <stdbool.h>
+
+// USER CODE BEGIN...
+
+#include "config/proj_cfg.h"
+#include <assert.h>
+
+// debug port
+#include "middleware/cli/cli/src/cli.h"
+
+// USER CODE END...
+
+////////////////////////////////////////////////////////////////////////////////
+// Definitions
+////////////////////////////////////////////////////////////////////////////////
+
+// USER CODE BEGIN...
+
+/**
+ *      Enable/Disable new firmware size check
+ */
+#define BOOT_CFG_FW_SIZE_CHECK_EN               ( 1 )
+
+/**
+ *      Enable/Disable new firmware version compatibility check
+ */
+#define BOOT_CFG_FW_VER_CHECK_EN               ( 0 )
+
+/**
+ *      Enable/Disable new firmware version compatibility check
+ */
+#define BOOT_CFG_HW_VER_CHECK_EN               ( 0 )
+
+/**
+ *      New firmware compatibility value
+ *
+ *  @note   New firmware version is compatible up to
+ *          version specified in following defines.
+ */
+#if ( 1 == BOOT_CFG_FW_VER_CHECK_EN )
+    #define BOOT_CFG_FW_VER_MAJOR               ( 1 )
+    #define BOOT_CFG_FW_VER_MINOR               ( 0 )
+    #define BOOT_CFG_FW_VER_DEVELOP             ( 0 )
+    #define BOOT_CFG_FW_VER_TEST                ( 0 )
+#endif
+
+/**
+ *      New firmware hardware compatibility value
+ *
+ *  @note   New firmware hardware version is compatible up to
+ *          version specified in following defines.
+ */
+#if ( 1 == BOOT_CFG_HW_VER_CHECK_EN )
+    #define BOOT_CFG_HW_VER_MAJOR               ( 1 )
+    #define BOOT_CFG_HW_VER_MINOR               ( 0 )
+    #define BOOT_CFG_HW_VER_DEVELOP             ( 0 )
+    #define BOOT_CFG_HW_VER_TEST                ( 0 )
+#endif
+
+/**
+ *      Enable/Disable debug mode
+ */
+#define BOOT_CFG_DEBUG_EN                        ( 1 )
+
+/**
+ *      Enable/Disable assertions
+ */
+#define BOOT_CFG_ASSERT_EN                       ( 1 )
+
+// USER CODE END...
+
+/**
+ *  Disable debug mode and asserts in release mode
+ */
+#ifndef DEBUG
+    #undef BOOT_CFG_DEBUG_EN
+    #define BOOT_CFG_DEBUG_EN 0
+
+    #undef BOOT_CFG_ASSERT_EN
+    #define BOOT_CFG_ASSERT_EN 0
+#endif
+
+/**
+ *  Debug communication port macros
+ */
+#if ( 1 == BOOT_CFG_DEBUG_EN )
+    #define BOOT_DBG_PRINT( ... )               ( cli_printf( __VA_ARGS__ ))
+#else
+    #define BOOT_DBG_PRINT( ... )               { ; }
+
+#endif
+
+/**
+ *   Assertion macros
+ */
+#if ( 1 == BOOT_CFG_ASSERT_EN )
+    #define BOOT_ASSERT(x)                      PROJ_CFG_ASSERT(x)
+#else
+    #define BOOT_ASSERT(x)                      { ; }
+#endif
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Functions
+////////////////////////////////////////////////////////////////////////////////
+
+
+#endif // __BOOT_CFG_H
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+* @} <!-- END GROUP -->
+*/
+////////////////////////////////////////////////////////////////////////////////
