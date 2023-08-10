@@ -36,58 +36,6 @@
 // Definitions
 ////////////////////////////////////////////////////////////////////////////////
 
-/**
- *  Booloader communication commands
- */
-typedef enum
-{
-    eBOOT_CMD_CONNECT       = (uint8_t)( 0x10U ),       /**<Connect command */
-    eBOOT_CMD_CONNECT_RSP   = (uint8_t)( 0x11U ),       /**<Connect response command*/
-    eBOOT_CMD_PREPARE       = (uint8_t)( 0x20U ),       /**<Prepare command */
-    eBOOT_CMD_PREPARE_RSP   = (uint8_t)( 0x21U ),       /**<Prepare response command*/
-    eBOOT_CMD_FLASH         = (uint8_t)( 0x30U ),       /**<Flash data command */
-    eBOOT_CMD_FLASH_RSP     = (uint8_t)( 0x31U ),       /**<Flash data response command*/
-    eBOOT_CMD_EXIT          = (uint8_t)( 0x40U ),       /**<Exit command */
-    eBOOT_CMD_EXIT_RSP      = (uint8_t)( 0x41U ),       /**<Exit response command*/
-    eBOOT_CMD_INFO          = (uint8_t)( 0xA0U ),       /**<Information command */
-    eBOOT_CMD_INFO_RSP      = (uint8_t)( 0xA1U ),       /**<Information response command*/
-} boot_cmd_opt_t;
-
-/**
- *  Bootloader message source
- */
-typedef enum
-{
-    eCOM_MSG_SRC_BOOT_MANAGER   = (uint8_t)( 0x2BU ),     /**<Message from Boot Manager (pc app) */
-    eCOM_MSG_SRC_BOOTLOADER     = (uint8_t)( 0xB2U ),     /**<Message from Bootloader (embedded) */
-} boot_msg_src_t;
-
-/**
- *  Bootloader header fields
- */
-typedef struct
-{
-    uint16_t    preamble;   /**<Message preamble */
-    uint16_t    length;     /**<Message length */
-    uint8_t     source;     /**<Message source */
-    uint8_t     command;    /**<Message command */
-    uint8_t     status;     /**<Message status */
-    uint8_t     crc;        /**<Message CRC8 */
-} boot_header_field_t;
-
-/**
- *  Bootloader header
- */
-typedef union
-{
-    boot_header_field_t     field;      /**<Field access */
-    uint8_t                 U;          /**<Unsigned access */
-} boot_header_t;
-
-/**
- *  Compiler compatibility check
- */
-BOOT_CFG_STATIC_ASSERT( sizeof(boot_header_t) == 8U );
 
 
 
@@ -95,6 +43,31 @@ BOOT_CFG_STATIC_ASSERT( sizeof(boot_header_t) == 8U );
 // Functions
 ////////////////////////////////////////////////////////////////////////////////
 boot_status_t boot_com_init(void);
+boot_status_t boot_com_hndl(void);
+
+// Message send functions
+boot_status_t boot_com_send_connect     (void);
+boot_status_t boot_com_send_connect_rsp (const boot_status_t stat);
+boot_status_t boot_com_send_prepare     (const uint32_t fw_size, const uint32_t fw_ver, const uint32_t hw_ver);
+boot_status_t boot_com_send_prepare_rsp (const boot_status_t stat);
+boot_status_t boot_com_send_flash     	(const uint8_t * const p_data, const uint16_t size);
+boot_status_t boot_com_send_flash_rsp 	(const boot_status_t stat);
+boot_status_t boot_com_send_exit     	(void);
+boot_status_t boot_com_send_exit_rsp 	(const boot_status_t stat);
+boot_status_t boot_com_send_info        (void);
+boot_status_t boot_com_send_info_rsp    (const uint32_t boot_ver, const boot_status_t status);
+
+// Message receive callback functions
+void boot_com_connect_msg_rcv_cb        (void);
+void boot_com_connect_msg_cmd_rcv_cb    (const boot_status_t status);
+void boot_com_prepare_msg_rcv_cb        (const uint32_t fw_size, const uint32_t fw_ver, const uint32_t hw_ver);
+void boot_com_prepare_rsp_msg_rcv_cb    (const boot_status_t status);
+void boot_com_flash_msg_rcv_cb          (const uint8_t * const p_data, const uint16_t size);
+void boot_com_flash_rsp_msg_rcv_cb      (const boot_status_t status);
+void boot_com_exit_msg_rcv_cb           (void);
+void boot_com_exit_rsp_msg_rcv_cb       (const boot_status_t status);
+void boot_com_info_msg_rcv_cb           (void);
+void boot_com_info_rsp_msg_rcv_cb       (const uint32_t boot_ver, const boot_status_t status);
 
 #endif // __BOOT_COM_H
 
