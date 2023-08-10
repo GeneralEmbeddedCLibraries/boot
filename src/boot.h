@@ -28,6 +28,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "boot_types.h"
+
 ////////////////////////////////////////////////////////////////////////////////
 // Definitions
 ////////////////////////////////////////////////////////////////////////////////
@@ -38,29 +40,6 @@
 #define BOOT_VER_MAJOR          ( 0 )
 #define BOOT_VER_MINOR          ( 1 )
 #define BOOT_VER_DEVELOP        ( 0 )
-
-/**
- *  Bootloader status
- */
-typedef enum
-{
-    eBOOT_OK        = 0x00U,    /**<Normal operation */
-    eBOOT_ERROR     = 0x01U,    /**<General error code */
-} boot_status_t;
-
-/**
- *  Bootloader state
- */
-typedef enum
-{
-    eBOOT_STATE_IDLE = 0,   /**<Idle state - waiting for request */
-    eBOOT_STATE_PREPARE,    /**<Preparing FLASH memory */
-    eBOOT_STATE_FLASH,      /**<Flashing memory with new software */
-    eBOOT_STATE_VALIDATE,   /**<Validation of software image */
-    eBOOT_STATE_EXIT,       /**<Exit bootloader - Enter application */
- 
-    eBOOT_STATE_NUM_OF
-} boot_state_t;
 
 
 ////////////////////////////////////////////////////////////////////////////////
