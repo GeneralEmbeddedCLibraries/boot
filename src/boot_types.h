@@ -37,13 +37,14 @@
  */
 typedef enum
 {
-    eBOOT_OK                    = (uint8_t) ( 0x00U ),    /**<Normal operation */
-    eBOOT_ERROR_VALIDATION      = (uint8_t) ( 0x01U ),    /**<Validation error */
-    eBOOT_ERROR_INVALID_REQ     = (uint8_t) ( 0x02U ),    /**<Invalid request - Wrong sequence */
-    eBOOT_ERROR_FLASH_WRITE     = (uint8_t) ( 0x04U ),    /**<Writing to FLASH error */
-    eBOOT_ERROR_FLASH_ERASE     = (uint8_t) ( 0x08U ),    /**<Erasing FLASH error */
-    eBOOT_ERROR_FW_SIZE         = (uint8_t) ( 0x10U ),    /**<Firmware image size to big error */
-    eBOOT_ERROR_FW_VER          = (uint8_t) ( 0x20U ),    /**<Uncompatible firmware version error */
+    eBOOT_OK                = (uint8_t)( 0x00U ),   /**<Normal operation */
+
+    eBOOT_ERROR             = (uint8_t)( 0x01U ),   /**<General error code */
+    eBOOT_ERROR_TIMEOUT     = (uint8_t)( 0x02U ),   /**<Frame reception timeout error */
+    eBOOT_ERROR_CRC         = (uint8_t)( 0x04U ),   /**<Frame integrity corrupted error */
+
+    eBOOT_WAR_EMPTY         = (uint8_t)( 0x20U ),   /**<Reception queue empty */
+    eBOOT_WAR_FULL          = (uint8_t)( 0x40U ),   /**<Reception queue full */
 } boot_status_t;
 
 /**
@@ -59,6 +60,19 @@ typedef enum
     eBOOT_STATE_NUM_OF
 } boot_state_t;
 
+/**
+ *  Message (command) response
+ */
+typedef enum
+{
+    eBOOT_MSG_OK                    = (uint8_t) ( 0x00U ),    /**<Normal operation */
+    eBOOT_MSG_ERROR_VALIDATION      = (uint8_t) ( 0x01U ),    /**<Validation error */
+    eBOOT_MSG_ERROR_INVALID_REQ     = (uint8_t) ( 0x02U ),    /**<Invalid request - Wrong sequence */
+    eBOOT_MSG_ERROR_FLASH_WRITE     = (uint8_t) ( 0x04U ),    /**<Writing to FLASH error */
+    eBOOT_MSG_ERROR_FLASH_ERASE     = (uint8_t) ( 0x08U ),    /**<Erasing FLASH error */
+    eBOOT_MSG_ERROR_FW_SIZE         = (uint8_t) ( 0x10U ),    /**<Firmware image size to big error */
+    eBOOT_MSG_ERROR_FW_VER          = (uint8_t) ( 0x20U ),    /**<Uncompatible firmware version error */
+} boot_msg_status_t;
 
 
 #endif // __BOOT_TYPES_H
