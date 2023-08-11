@@ -33,6 +33,9 @@
 #include "config/proj_cfg.h"
 #include <assert.h>
 
+// HAL
+#include "stm32g4xx_hal.h"
+
 // debug port
 #include "middleware/cli/cli/src/cli.h"
 
@@ -84,6 +87,29 @@
     #define BOOT_CFG_HW_VER_DEVELOP             ( 0 )
     #define BOOT_CFG_HW_VER_TEST                ( 0 )
 #endif
+
+/**
+ *      Reception buffer size
+ *
+ *  Unit: byte
+ */
+#define BOOT_CFG_RX_BUF_SIZE                    ( 256 )
+
+/**
+ *      Communication idle timeout
+ *
+ * @note    Consecutive bytes shall be received within that timeout period!
+ *
+ *  Unit: ms
+ */
+#define BOOT_CFG_COM_IDLE_TIMEOUT_MS            ( 10U )
+
+/**
+ *  Get system timetick in 32-bit unsigned integer form
+ *
+ *  Unit: ms
+ */
+#define BOOT_GET_SYSTICK()                      ((uint32_t) HAL_GetTick() )
 
 /**
  *      Enable/Disable debug mode
