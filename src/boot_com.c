@@ -151,7 +151,7 @@ typedef struct
 static uint8_t          boot_com_calc_crc       (const uint8_t * const p_data, const uint16_t size);
 static boot_status_t    boot_parse_idle         (boot_parser_t * const p_parser);
 static boot_status_t    boot_parse_rcv_header   (boot_parser_t * const p_parser);
-static boot_status_t    boot_parse_rcv_payload  (boot_parser_t * const p_parser, boot_header_t * const p_header, uint8_t * const p_payload);
+static boot_status_t    boot_parse_rcv_payload  (boot_parser_t * const p_parser, boot_header_t * p_header, uint8_t * p_payload);
 static bool             boot_timeout_check      (boot_parser_t * const p_parser);
 static boot_status_t    boot_parse_hndl         (boot_header_t * const p_header, uint8_t * const p_payload);
 
@@ -308,7 +308,7 @@ static boot_status_t boot_parse_rcv_header(boot_parser_t * const p_parser)
 * @return       status      - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
-static boot_status_t boot_parse_rcv_payload(boot_parser_t * const p_parser, boot_header_t * const p_header, uint8_t * const p_payload)
+static boot_status_t boot_parse_rcv_payload(boot_parser_t * const p_parser, boot_header_t * p_header, uint8_t * p_payload)
 {
     boot_status_t   status      = eBOOT_WAR_EMPTY;
     uint8_t         crc_calc    = 0;
@@ -318,8 +318,8 @@ static boot_status_t boot_parse_rcv_payload(boot_parser_t * const p_parser, boot
     if ( p_parser->buf.idx == ( p_parser->header.field.length + sizeof( boot_header_t )))
     {
         // Get header and payload
-        memcpy( &( p_header->U ), &p_parser->buf.mem[0],                     sizeof( boot_header_t ));
-        memcpy( p_payload,        &p_parser->buf.mem[sizeof(boot_header_t)], p_header->field.length );
+        p_header = (boot_header_t*) &p_parser->buf.mem[0];
+        p_payload = &p_parser->buf.mem[sizeof(boot_header_t)];
 
         // Calculate CRC
         crc_calc  = boot_com_calc_crc( &p_header->U, sizeof(boot_header_t));
@@ -455,74 +455,74 @@ static boot_status_t boot_parse_hndl(boot_header_t * const p_header, uint8_t * c
 }
 
 
-static void boot_parse_connect(const boot_header_t * const p_header, const uint8_t * const p_data)
+static void boot_parse_connect(const boot_header_t * const p_header, const uint8_t * const p_payload)
 {
     // Unused
     (void) p_header;
-    (void) p_data;
+    (void) p_payload;
 }
 
-static void boot_parse_connect_rsp(const boot_header_t * const p_header, const uint8_t * const p_data)
+static void boot_parse_connect_rsp(const boot_header_t * const p_header, const uint8_t * const p_payload)
 {
     // Unused
     (void) p_header;
-    (void) p_data;
+    (void) p_payload;
 }
 
-static void boot_parse_prepare(const boot_header_t * const p_header, const uint8_t * const p_data)
+static void boot_parse_prepare(const boot_header_t * const p_header, const uint8_t * const p_payload)
 {
     // Unused
     (void) p_header;
-    (void) p_data;
+    (void) p_payload;
 }
 
-static void boot_parse_prepare_rsp(const boot_header_t * const p_header, const uint8_t * const p_data)
+static void boot_parse_prepare_rsp(const boot_header_t * const p_header, const uint8_t * const p_payload)
 {
     // Unused
     (void) p_header;
-    (void) p_data;
+    (void) p_payload;
 }
 
-static void boot_parse_flash(const boot_header_t * const p_header, const uint8_t * const p_data)
+static void boot_parse_flash(const boot_header_t * const p_header, const uint8_t * const p_payload)
 {
     // Unused
     (void) p_header;
-    (void) p_data;
+    (void) p_payload;
 }
 
-static void boot_parse_flash_rsp(const boot_header_t * const p_header, const uint8_t * const p_data)
+static void boot_parse_flash_rsp(const boot_header_t * const p_header, const uint8_t * const p_payload)
 {
     // Unused
     (void) p_header;
-    (void) p_data;
+    (void) p_payload;
 }
 
-static void boot_parse_exit(const boot_header_t * const p_header, const uint8_t * const p_data)
+static void boot_parse_exit(const boot_header_t * const p_header, const uint8_t * const p_payload)
 {
     // Unused
     (void) p_header;
-    (void) p_data;
+    (void) p_payload;
 }
 
-static void boot_parse_exit_rsp(const boot_header_t * const p_header, const uint8_t * const p_data)
+static void boot_parse_exit_rsp(const boot_header_t * const p_header, const uint8_t * const p_payload)
 {
     // Unused
     (void) p_header;
-    (void) p_data;
+    (void) p_payload;
 }
 
-static void boot_parse_info(const boot_header_t * const p_header, const uint8_t * const p_data)
+static void boot_parse_info(const boot_header_t * const p_header, const uint8_t * const p_payload)
 {
     // Unused
     (void) p_header;
-    (void) p_data;
+    (void) p_payload;
 }
 
-static void boot_parse_info_rsp(const boot_header_t * const p_header, const uint8_t * const p_data)
+static void boot_parse_info_rsp(const boot_header_t * const p_header, const uint8_t * const p_payload)
 {
     // Unused
     (void) p_header;
-    (void) p_data;
+    (void) p_payload;
 }
 
 
@@ -546,7 +546,7 @@ boot_status_t boot_com_init(void)
 {
     boot_status_t status = eBOOT_OK;
 
-
+    // TODO: Initialize interface...
 
     return status;
 }
