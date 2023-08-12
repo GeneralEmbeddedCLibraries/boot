@@ -460,6 +460,9 @@ static void boot_parse_connect(const boot_header_t * const p_header, const uint8
     // Unused
     (void) p_header;
     (void) p_payload;
+
+
+    BOOT_DBG_PRINT( "Connect command received" );
 }
 
 static void boot_parse_connect_rsp(const boot_header_t * const p_header, const uint8_t * const p_payload)
@@ -546,7 +549,8 @@ boot_status_t boot_com_init(void)
 {
     boot_status_t status = eBOOT_OK;
 
-    // TODO: Initialize interface...
+    // Init interface
+    status = boot_if_init();
 
     return status;
 }

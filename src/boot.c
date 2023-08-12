@@ -25,6 +25,7 @@
 #include <stdbool.h>
 
 #include "boot.h"
+#include "boot_com.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 // Definitions
@@ -64,7 +65,8 @@ boot_status_t boot_init(void)
 {
     boot_status_t status = eBOOT_OK;
 
-    // TODO: ...
+    // Initialize communication
+    status |= boot_com_init();
 
     return status;
 }
@@ -74,7 +76,16 @@ boot_status_t boot_hndl(void)
 {
     boot_status_t status = eBOOT_OK;
 
-    // TODO: ...
+    // Handle bootlaoder communication
+    status |= boot_com_hndl();
+
+
+
+    /// TESTING::::
+
+    boot_com_send_connect();
+
+
 
     return status;
 }
