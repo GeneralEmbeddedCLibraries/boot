@@ -150,9 +150,9 @@ typedef struct
 static uint8_t          boot_com_calc_crc       (const uint8_t * const p_data, const uint16_t size);
 static boot_status_t    boot_parse_idle         (boot_parser_t * const p_parser);
 static boot_status_t    boot_parse_rcv_header   (boot_parser_t * const p_parser, boot_header_t ** pp_header);
-static boot_status_t    boot_parse_rcv_payload  (boot_parser_t * const p_parser, const boot_header_t * const p_header, uint8_t * p_payload);
+static boot_status_t    boot_parse_rcv_payload  (boot_parser_t * const p_parser, const boot_header_t * const p_header, uint8_t ** pp_payload);
 static bool             boot_timeout_check      (boot_parser_t * const p_parser);
-static boot_status_t    boot_parse_hndl         (boot_header_t ** p_header, uint8_t * p_payload);
+static boot_status_t    boot_parse_hndl         (boot_header_t ** pp_header, uint8_t ** pp_payload);
 static boot_status_t    boot_buf_idx_increment  (void);
 
 static void 			boot_parse_connect      (const boot_header_t * const p_header, const uint8_t * const p_data);
@@ -361,11 +361,11 @@ static boot_status_t boot_parse_rcv_header(boot_parser_t * const p_parser, boot_
 *
 * @param[in]    p_parser    - Pointer to parser data
 * @param[out]   p_header    - Pointer to header
-* @param[out]   p_payload   - Pointer to payload
+* @param[out]   pp_payload  - Pointer-pointer to payload
 * @return       status      - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
-static boot_status_t boot_parse_rcv_payload(boot_parser_t * const p_parser, const boot_header_t * const p_header, uint8_t * p_payload)
+static boot_status_t boot_parse_rcv_payload(boot_parser_t * const p_parser, const boot_header_t * const p_header, uint8_t ** pp_payload)
 {
     boot_status_t   status      = eBOOT_WAR_EMPTY;
     uint8_t         crc_calc    = 0;
@@ -375,10 +375,10 @@ static boot_status_t boot_parse_rcv_payload(boot_parser_t * const p_parser, cons
     if ( p_parser->buf.idx == ( p_header->field.length + sizeof( boot_header_t )))
     {
         // Get payload
-        p_payload = &p_parser->buf.mem[sizeof(boot_header_t)];
+        *pp_payload = &p_parser->buf.mem[sizeof(boot_header_t)];
 
         // Calculate CRC
-        crc_calc = boot_com_calc_crc_packet( p_header, p_payload );
+        crc_calc = boot_com_calc_crc_packet( p_header, *pp_payload );
 
         // Message CRC
         crc_msg = p_header->field.crc;
@@ -446,12 +446,12 @@ static bool boot_timeout_check(boot_parser_t * const p_parser)
 * @note         If there are two completely received messages inside reception buffer, only first one
 *               will be parsed and then calling that function again is mandatory to parse another one.
 *
-* @param[out]   p_header    - Pointer to header
-* @param[out]   p_payload   - Pointer to payload
+* @param[out]   pp_header   - Pointer-pointer to header, return location of rx buffer starting at header
+* @param[out]   pp_payload  - Pointer-pointer to payload, return location of rx buffer starting at payload
 * @return       status      - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
-static boot_status_t boot_parse_hndl(boot_header_t ** p_header, uint8_t * p_payload)
+static boot_status_t boot_parse_hndl(boot_header_t ** pp_header, uint8_t ** pp_payload)
 {
     boot_status_t status = eBOOT_WAR_EMPTY;
 
@@ -475,11 +475,11 @@ static boot_status_t boot_parse_hndl(boot_header_t ** p_header, uint8_t * p_payl
                     break;
 
                 case eBOOT_PARSER_RCV_HEADER:
-                    status = boot_parse_rcv_header( &g_parser, p_header );
+                    status = boot_parse_rcv_header( &g_parser, pp_header );
                     break;
 
                 case eBOOT_PARSER_RCV_PAYLOAD:
-                    status = boot_parse_rcv_payload( &g_parser, *p_header, p_payload );
+                    status = boot_parse_rcv_payload( &g_parser, *pp_header, pp_payload );
                     break;
 
                 default:
@@ -666,11 +666,11 @@ boot_status_t boot_com_init(void)
 boot_status_t boot_com_hndl(void)
 {
     boot_status_t   status      = eBOOT_OK;
-    boot_header_t *  p_header    = {0};
-    static uint8_t *       p_Mpayload   = NULL;
+    boot_header_t * p_header    = NULL;
+    uint8_t *       p_payload   = NULL;
 
     // Parse received messages
-    status = boot_parse_hndl((boot_header_t **) &p_header, p_Mpayload );
+    status = boot_parse_hndl((boot_header_t **) &p_header, (uint8_t**) &p_payload );
 
     // Msg received OK
     if ( eBOOT_OK == status )
@@ -678,11 +678,9 @@ boot_status_t boot_com_hndl(void)
         // Parse received message
         for ( uint32_t cmd = 0; cmd < gu32_parse_table_size; cmd++ )
         {
-            //if ( (*p_header)->field.command == g_parse_table[cmd].cmd )
             if (p_header->field.command == g_parse_table[cmd].cmd )
             {
-                //g_parse_table[cmd].pf_parse( (*p_header), p_Mpayload);
-                g_parse_table[cmd].pf_parse( p_header, p_Mpayload);
+                g_parse_table[cmd].pf_parse( p_header, p_payload );
                 break;
             }
         }
@@ -842,10 +840,10 @@ boot_status_t boot_com_send_flash(const uint8_t * const p_data, const uint16_t s
     header.field.preamble   = BOOT_MSG_PREAMBLE_VAL;
     header.field.length     = size;
     header.field.source     = eCOM_MSG_SRC_BOOT_MANAGER;
-    header.field.command    = eBOOT_MSG_CMD_PREPARE;
+    header.field.command    = eBOOT_MSG_CMD_FLASH;
 
     // Calculate CRC
-    header.field.crc = boot_com_calc_crc_packet( &header, NULL );
+    header.field.crc = boot_com_calc_crc_packet( &header, p_data );
 
     // Send command
     status  = boot_if_transmit( &header.U, sizeof( boot_header_t ));

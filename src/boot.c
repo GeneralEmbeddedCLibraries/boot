@@ -84,7 +84,7 @@ boot_status_t boot_hndl(void)
     /// TESTING::::
 
     boot_com_send_connect();
-
+    boot_com_send_flash((uint8_t*) "Hello", 5U );
 
 
     return status;
