@@ -154,6 +154,7 @@ static boot_status_t    boot_parse_rcv_header   (boot_parser_t * const p_parser)
 static boot_status_t    boot_parse_rcv_payload  (boot_parser_t * const p_parser, boot_header_t * p_header, uint8_t * p_payload);
 static bool             boot_timeout_check      (boot_parser_t * const p_parser);
 static boot_status_t    boot_parse_hndl         (boot_header_t * const p_header, uint8_t * const p_payload);
+static void             boot_buf_idx_increment  (void);
 
 static void 			boot_parse_connect      (const boot_header_t * const p_header, const uint8_t * const p_data);
 static void 			boot_parse_connect_rsp  (const boot_header_t * const p_header, const uint8_t * const p_data);
@@ -280,7 +281,17 @@ static boot_status_t boot_parse_rcv_header(boot_parser_t * const p_parser)
         // Preamble OK
         if ( BOOT_MSG_PREAMBLE_VAL == p_parser->header.field.preamble )
         {
-            p_parser->mode = eBOOT_PARSER_RCV_PAYLOAD;
+            // No payload
+            if ( 0U == p_parser->header.field.length )
+            {
+                status = eBOOT_OK;
+            }
+
+            // Payload present
+            else
+            {
+                p_parser->mode = eBOOT_PARSER_RCV_PAYLOAD;
+            }
         }
 
         // Preamble not OK --> Wait for timeout to reset buffer
@@ -339,10 +350,6 @@ static boot_status_t boot_parse_rcv_payload(boot_parser_t * const p_parser, boot
         {
             status = eBOOT_ERROR_CRC;
         }
-
-        // Reset parser
-        p_parser->buf.idx = 0;
-        p_parser->mode = eBOOT_PARSER_IDLE;
     }
 
     return status;
@@ -406,8 +413,8 @@ static boot_status_t boot_parse_hndl(boot_header_t * const p_header, uint8_t * c
     // Get all data from rx buffers
     while ( eBOOT_OK == boot_if_receive( &g_parser.buf.mem[ g_parser.buf.idx ]))
     {
-        // Increment received byte counter
-        g_parser.buf.idx++;
+        // Increment buffer index
+        boot_buf_idx_increment();
 
         // Store timestamp
         g_parser.last_timestamp = BOOT_GET_SYSTICK();
@@ -436,7 +443,11 @@ static boot_status_t boot_parse_hndl(boot_header_t * const p_header, uint8_t * c
         if  (   ( eBOOT_OK == status )
             ||  ( eBOOT_ERROR_CRC == status ))
         {
-            BOOT_DBG_PRINT( "Msg received with status <%s>", status );
+            // Reset parser
+            g_parser.buf.idx = 0;
+            g_parser.mode = eBOOT_PARSER_IDLE;
+
+            BOOT_DBG_PRINT( "Msg received with status <%d>", status );
 
             // Exit reading data from rx buffer
             break;
@@ -452,6 +463,20 @@ static boot_status_t boot_parse_hndl(boot_header_t * const p_header, uint8_t * c
     }
 
     return status;
+}
+
+static void boot_buf_idx_increment(void)
+{
+    // Increment received byte counter
+    if ( g_parser.buf.idx < ( BOOT_CFG_RX_BUF_SIZE - 1U ))
+    {
+        g_parser.buf.idx++;
+    }
+    else
+    {
+        // NOTE: Increase buffer size of process parsing faster
+        BOOT_ASSERT( 0 );
+    }
 }
 
 
@@ -526,6 +551,10 @@ static void boot_parse_info_rsp(const boot_header_t * const p_header, const uint
     // Unused
     (void) p_header;
     (void) p_payload;
+
+
+    // TOOD: REMOVE
+    boot_parse_hndl( (boot_header_t*) p_header, (uint8_t*) p_payload );
 }
 
 
@@ -556,6 +585,7 @@ boot_status_t boot_com_init(void)
 }
 
 
+static volatile uint8_t data;
 
 
 boot_status_t boot_com_hndl(void)
