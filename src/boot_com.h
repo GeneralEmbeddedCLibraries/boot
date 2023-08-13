@@ -55,7 +55,7 @@ boot_status_t boot_com_send_info_rsp    (const uint32_t boot_ver, const boot_msg
 
 // Message receive callback functions
 void boot_com_connect_msg_rcv_cb        (void);
-void boot_com_connect_msg_cmd_rcv_cb    (const boot_msg_status_t msg_status);
+void boot_com_connect_rsp_msg_rcv_cb    (const boot_msg_status_t msg_status);
 void boot_com_prepare_msg_rcv_cb        (const uint32_t fw_size, const uint32_t fw_ver, const uint32_t hw_ver);
 void boot_com_prepare_rsp_msg_rcv_cb    (const boot_msg_status_t msg_status);
 void boot_com_flash_msg_rcv_cb          (const uint8_t * const p_data, const uint16_t size);

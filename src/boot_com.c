@@ -154,6 +154,7 @@ static boot_status_t    boot_parse_rcv_payload  (boot_parser_t * const p_parser,
 static bool             boot_timeout_check      (boot_parser_t * const p_parser);
 static boot_status_t    boot_parse_hndl         (boot_header_t ** pp_header, uint8_t ** pp_payload);
 static boot_status_t    boot_buf_idx_increment  (void);
+static boot_status_t    boot_parse              (boot_parser_t * const p_parser, boot_header_t ** pp_header, uint8_t ** pp_payload);
 
 static void 			boot_parse_connect      (const boot_header_t * const p_header, const uint8_t * const p_data);
 static void 			boot_parse_connect_rsp  (const boot_header_t * const p_header, const uint8_t * const p_data);
@@ -217,10 +218,6 @@ static uint8_t boot_com_calc_crc(const uint8_t * const p_data, const uint16_t si
     const   uint8_t seed    = 0xB6U;    // Custom seed
             uint8_t crc8    = seed;
 
-    // Check input
-    BOOT_ASSERT( NULL != p_data );
-    BOOT_ASSERT( size > 0 );
-
     for (uint16_t i = 0; i < size; i++)
     {
         crc8 = ( crc8 ^ p_data[i] );
@@ -262,6 +259,7 @@ static uint8_t boot_com_calc_crc_packet(const boot_header_t * const p_header, co
     crc8 ^= boot_com_calc_crc( (uint8_t*) &( p_header->field.command ), sizeof( p_header->field.command ));
     crc8 ^= boot_com_calc_crc( (uint8_t*) &( p_header->field.status ),  sizeof( p_header->field.status ));
 
+    // Include also payload to CRC if needed
     if ( NULL != p_payload )
     {
         crc8 ^= boot_com_calc_crc( p_payload, p_header->field.length );
@@ -458,34 +456,17 @@ static boot_status_t boot_parse_hndl(boot_header_t ** pp_header, uint8_t ** pp_p
     // Get all data from rx buffers
     while ( eBOOT_OK == boot_if_receive( &g_parser.buf.mem[ g_parser.buf.idx ]))
     {
+        // Store timestamp
+        g_parser.last_timestamp = BOOT_GET_SYSTICK();
+
         // Increment buffer index
         status = boot_buf_idx_increment();
 
         // Buffer OK
         if ( eBOOT_OK == status )
         {
-            // Store timestamp
-            g_parser.last_timestamp = BOOT_GET_SYSTICK();
-
-            // Parser FSM
-            switch( g_parser.mode )
-            {
-                case eBOOT_PARSER_IDLE:
-                    status = boot_parse_idle( &g_parser );
-                    break;
-
-                case eBOOT_PARSER_RCV_HEADER:
-                    status = boot_parse_rcv_header( &g_parser, pp_header );
-                    break;
-
-                case eBOOT_PARSER_RCV_PAYLOAD:
-                    status = boot_parse_rcv_payload( &g_parser, *pp_header, pp_payload );
-                    break;
-
-                default:
-                    BOOT_ASSERT( 0 );
-                    break;
-            }
+            // Parse message
+            status = boot_parse( &g_parser, pp_header, pp_payload );
 
             // Message completely received
             if  (   ( eBOOT_OK == status )
@@ -494,8 +475,6 @@ static boot_status_t boot_parse_hndl(boot_header_t ** pp_header, uint8_t ** pp_p
                 // Reset parser
                 g_parser.buf.idx = 0;
                 g_parser.mode = eBOOT_PARSER_IDLE;
-
-                BOOT_DBG_PRINT( "Msg received with status <%d>", status );
 
                 // Exit reading data from rx buffer
                 break;
@@ -511,8 +490,6 @@ static boot_status_t boot_parse_hndl(boot_header_t ** pp_header, uint8_t ** pp_p
             // Reset parser
             g_parser.buf.idx = 0;
             g_parser.mode = eBOOT_PARSER_IDLE;
-
-            BOOT_DBG_PRINT( "Buffer overflow, reseting parser logic!" );
 
             // Exit reading data from rx buffer
             break;
@@ -560,81 +537,229 @@ static boot_status_t boot_buf_idx_increment(void)
     return status;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Bootloader communication parser actions
+*
+* @param[in]    p_parser    - Pointer to bootloader parser
+* @param[out]   pp_header   - Pointer-pointer to header, return location of rx buffer starting at header
+* @param[out]   pp_payload  - Pointer-pointer to payload, return location of rx buffer starting at payload
+* @return       status      - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
+static boot_status_t boot_parse(boot_parser_t * const p_parser, boot_header_t ** pp_header, uint8_t ** pp_payload)
+{
+    boot_status_t status = eBOOT_WAR_EMPTY;
 
+    // Parser FSM
+    switch( p_parser->mode )
+    {
+        case eBOOT_PARSER_IDLE:
+            status = boot_parse_idle( p_parser );
+            break;
+
+        case eBOOT_PARSER_RCV_HEADER:
+            status = boot_parse_rcv_header( p_parser, pp_header );
+            break;
+
+        case eBOOT_PARSER_RCV_PAYLOAD:
+            status = boot_parse_rcv_payload( p_parser, *pp_header, pp_payload );
+            break;
+
+        default:
+            BOOT_ASSERT( 0 );
+            break;
+    }
+
+    return status;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Bootloader Connect message parser
+*
+* @param[in]    p_header    - Pointer to message header
+* @param[in]    p_payload   - Pointer to message payload
+* @return       void
+*/
+////////////////////////////////////////////////////////////////////////////////
 static void boot_parse_connect(const boot_header_t * const p_header, const uint8_t * const p_payload)
 {
     // Unused
     (void) p_header;
     (void) p_payload;
 
-
-    BOOT_DBG_PRINT( "Connect command received" );
+    // Raise callback
+    boot_com_connect_msg_rcv_cb();
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Bootloader Connect Response message parser
+*
+* @param[in]    p_header    - Pointer to message header
+* @param[in]    p_payload   - Pointer to message payload
+* @return       void
+*/
+////////////////////////////////////////////////////////////////////////////////
 static void boot_parse_connect_rsp(const boot_header_t * const p_header, const uint8_t * const p_payload)
 {
     // Unused
-    (void) p_header;
     (void) p_payload;
+
+    // Raise callback
+    boot_com_connect_rsp_msg_rcv_cb( p_header->field.status );
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Bootloader Prepare message parser
+*
+* @param[in]    p_header    - Pointer to message header
+* @param[in]    p_payload   - Pointer to message payload
+* @return       void
+*/
+////////////////////////////////////////////////////////////////////////////////
 static void boot_parse_prepare(const boot_header_t * const p_header, const uint8_t * const p_payload)
 {
+    boot_prepare_payload_t payload = {0};
+
     // Unused
     (void) p_header;
-    (void) p_payload;
+
+    // Parse payload
+    memcpy( &payload, p_payload, sizeof( boot_prepare_payload_t ));
+
+    // Raise callback
+    boot_com_prepare_msg_rcv_cb( payload.fw_size, payload.fw_ver, payload.hw_ver );
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Bootloader Prepare Response message parser
+*
+* @param[in]    p_header    - Pointer to message header
+* @param[in]    p_payload   - Pointer to message payload
+* @return       void
+*/
+////////////////////////////////////////////////////////////////////////////////
 static void boot_parse_prepare_rsp(const boot_header_t * const p_header, const uint8_t * const p_payload)
 {
     // Unused
-    (void) p_header;
     (void) p_payload;
+
+    // Raise callback
+    boot_com_prepare_rsp_msg_rcv_cb( p_header->field.status );
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Bootloader Flash Data message parser
+*
+* @param[in]    p_header    - Pointer to message header
+* @param[in]    p_payload   - Pointer to message payload
+* @return       void
+*/
+////////////////////////////////////////////////////////////////////////////////
 static void boot_parse_flash(const boot_header_t * const p_header, const uint8_t * const p_payload)
 {
-    // Unused
-    (void) p_header;
-    (void) p_payload;
+    // Raise callback
+    boot_com_flash_msg_rcv_cb( p_payload, p_header->field.length );
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Bootloader Flash Data Response message parser
+*
+* @param[in]    p_header    - Pointer to message header
+* @param[in]    p_payload   - Pointer to message payload
+* @return       void
+*/
+////////////////////////////////////////////////////////////////////////////////
 static void boot_parse_flash_rsp(const boot_header_t * const p_header, const uint8_t * const p_payload)
 {
     // Unused
-    (void) p_header;
     (void) p_payload;
+
+    // Raise callback
+    boot_com_flash_rsp_msg_rcv_cb( p_header->field.status );
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Bootloader Exit message parser
+*
+* @param[in]    p_header    - Pointer to message header
+* @param[in]    p_payload   - Pointer to message payload
+* @return       void
+*/
+////////////////////////////////////////////////////////////////////////////////
 static void boot_parse_exit(const boot_header_t * const p_header, const uint8_t * const p_payload)
 {
     // Unused
     (void) p_header;
     (void) p_payload;
+
+    // Raise callback
+    boot_com_exit_msg_rcv_cb();
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Bootloader Exit Response message parser
+*
+* @param[in]    p_header    - Pointer to message header
+* @param[in]    p_payload   - Pointer to message payload
+* @return       void
+*/
+////////////////////////////////////////////////////////////////////////////////
 static void boot_parse_exit_rsp(const boot_header_t * const p_header, const uint8_t * const p_payload)
 {
     // Unused
-    (void) p_header;
     (void) p_payload;
+
+    // Raise callback
+    boot_com_exit_rsp_msg_rcv_cb( p_header->field.status );
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Bootloader Info message parser
+*
+* @param[in]    p_header    - Pointer to message header
+* @param[in]    p_payload   - Pointer to message payload
+* @return       void
+*/
+////////////////////////////////////////////////////////////////////////////////
 static void boot_parse_info(const boot_header_t * const p_header, const uint8_t * const p_payload)
 {
     // Unused
     (void) p_header;
     (void) p_payload;
+
+    // Raise callback
+    boot_com_info_msg_rcv_cb();
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Bootloader Info Response message parser
+*
+* @param[in]    p_header    - Pointer to message header
+* @param[in]    p_payload   - Pointer to message payload
+* @return       void
+*/
+////////////////////////////////////////////////////////////////////////////////
 static void boot_parse_info_rsp(const boot_header_t * const p_header, const uint8_t * const p_payload)
 {
-    // Unused
-    (void) p_header;
-    (void) p_payload;
+    uint32_t boot_ver = 0U;
 
+    // Parse bootloader version
+    memcpy( &boot_ver, p_payload, sizeof( boot_ver ));
+
+    // Raise callback
+    boot_com_info_rsp_msg_rcv_cb( boot_ver, p_header->field.status );
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -651,7 +776,13 @@ static void boot_parse_info_rsp(const boot_header_t * const p_header, const uint
 */
 ////////////////////////////////////////////////////////////////////////////////
 
-
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Initialize Bootloader communication interface
+*
+* @return       status - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
 boot_status_t boot_com_init(void)
 {
     boot_status_t status = eBOOT_OK;
@@ -662,7 +793,13 @@ boot_status_t boot_com_init(void)
     return status;
 }
 
-
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Handle Bootloader communication
+*
+* @return       status - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
 boot_status_t boot_com_hndl(void)
 {
     boot_status_t   status      = eBOOT_OK;
@@ -680,6 +817,7 @@ boot_status_t boot_com_hndl(void)
         {
             if (p_header->field.command == g_parse_table[cmd].cmd )
             {
+                // Raise parsing command
                 g_parse_table[cmd].pf_parse( p_header, p_payload );
                 break;
             }
@@ -688,7 +826,6 @@ boot_status_t boot_com_hndl(void)
 
     return status;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -1027,7 +1164,7 @@ __BOOT_CFG_WEAK__ void boot_com_connect_msg_rcv_cb(void)
 * @return       void
 */
 ////////////////////////////////////////////////////////////////////////////////
-__BOOT_CFG_WEAK__ void boot_com_connect_msg_cmd_rcv_cb(const boot_msg_status_t msg_status)
+__BOOT_CFG_WEAK__ void boot_com_connect_rsp_msg_rcv_cb(const boot_msg_status_t msg_status)
 {
     // Unused params
     (void) msg_status;
