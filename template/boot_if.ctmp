@@ -14,6 +14,10 @@
 /*!
 * @addtogroup Bootloader Interface
 * @{ <!-- BEGIN GROUP -->
+*
+*
+*   @note   Change code only between "USER_CODE_BEGIN" and
+*           "USER_CODE_END" section!
 */
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -26,23 +30,43 @@
 
 #include "boot_if.h"
 
+// USER INCLUDE BEGIN...
+
+#include "drivers/peripheral/uart/uart/src/uart.h"
+
+// USER INCLUDE END...
+
 ////////////////////////////////////////////////////////////////////////////////
 // Definitions
 ////////////////////////////////////////////////////////////////////////////////
+
+// USER CODE BEGIN...
+
+// USER CODE END...
 
 ////////////////////////////////////////////////////////////////////////////////
 // Variables
 ////////////////////////////////////////////////////////////////////////////////
 
+// USER CODE BEGIN...
+
+// USER CODE END...
+
 ////////////////////////////////////////////////////////////////////////////////
 // Function prototypes
 ////////////////////////////////////////////////////////////////////////////////
+
+// USER CODE BEGIN...
+
+// USER CODE END...
 
 ////////////////////////////////////////////////////////////////////////////////
 // Functions
 ////////////////////////////////////////////////////////////////////////////////
 
+// USER CODE BEGIN...
 
+// USER CODE END...
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -59,33 +83,101 @@
 */
 ////////////////////////////////////////////////////////////////////////////////
 
-
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Initialize Bootloader communication port
+*
+* @return       status  - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
 boot_status_t boot_if_init(void)
 {
     boot_status_t status = eBOOT_OK;
 
+    // USER CODE BEGIN...
+
+    if ( eUART_OK != uart_init( eUART_BOOT ))
+    {
+        status = eBOOT_ERROR;
+    }
+
+    // USER CODE END...
 
     return status;
 }
 
-
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Transmit data over Bootloader communication port
+*
+* @note In case of transmit error function shall return "eBOOT_ERROR" code!
+*
+* @param[in]    p_data  - Data to transmit
+* @param[in]    size    - Size of data to transmit in bytes
+* @return       status  - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
 boot_status_t boot_if_transmit(const uint8_t * const p_data, const uint16_t size)
 {
     boot_status_t status = eBOOT_OK;
 
-    // Unused
-    (void) size;
-    (void) p_data;
+    // USER CODE BEGIN...
+
+    if ( eUART_OK != uart_transmit( eUART_BOOT, p_data, size ))
+    {
+        status = eBOOT_ERROR;
+    }
+
+    // USER CODE END...
 
     return status;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Receive data over Bootloader communication port
+*
+* @note In case of reception error or RX FIFO empty function shall return "eBOOT_ERROR" code!
+*
+* @param[in]    p_data  - Data to transmit
+* @return       status  - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
 boot_status_t boot_if_receive(uint8_t * const p_data)
 {
     boot_status_t status = eBOOT_OK;
 
-    // Unused
-    (void) p_data;
+    // USER CODE BEGIN...
+
+    if ( eUART_OK != uart_receive( eUART_BOOT, p_data ))
+    {
+        status = eBOOT_ERROR;
+    }
+
+    // USER CODE END...
+
+    return status;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Clear Bootloader interface reception FIFO
+*
+* @return       status  - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
+boot_status_t boot_if_clear_rx_buf(void)
+{
+    boot_status_t status = eBOOT_OK;
+
+    // USER CODE BEGIN...
+
+    if ( eUART_OK != uart_clear_rx_buf( eUART_BOOT ))
+    {
+        status = eBOOT_ERROR;
+    }
+
+    // USER CODE END...
 
     return status;
 }
