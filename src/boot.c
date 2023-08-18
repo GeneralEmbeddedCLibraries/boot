@@ -31,13 +31,56 @@
 // Definitions
 ////////////////////////////////////////////////////////////////////////////////
 
+#if ( 1 == BOOT_CFG_DEBUG_EN )
+
+    /**
+     *  Bootloader message status description
+     */
+    typedef struct
+    {
+        const char *        desc;       /**<Status description string */
+        boot_msg_status_t   status;     /**<Status enumeration */
+    } boot_msg_status_desc_t;
+
+#endif // ( 1 == BOOT_CFG_DEBUG_EN )
+
+
 ////////////////////////////////////////////////////////////////////////////////
 // Variables
 ////////////////////////////////////////////////////////////////////////////////
 
+#if ( 1 == BOOT_CFG_DEBUG_EN )
+
+    /**
+     *  Message status descriptions
+     */
+    static const boot_msg_status_desc_t g_msg_status_desc[] =
+    {
+        { .status = eBOOT_MSG_OK,                   .desc = "OK"                         	},
+        { .status = eBOOT_MSG_ERROR_VALIDATION,     .desc = "ERROR - VALIDATION"         	},
+        { .status = eBOOT_MSG_ERROR_INVALID_REQ,    .desc = "ERROR - INVALID REQUEST"    	},
+        { .status = eBOOT_MSG_ERROR_FLASH_WRITE,    .desc = "ERROR - WRITE TO FLASH"     	},
+        { .status = eBOOT_MSG_ERROR_FLASH_ERASE,    .desc = "ERROR - FLASH PREPARE (ERASE)"  },
+        { .status = eBOOT_MSG_ERROR_FW_SIZE,        .desc = "ERROR - FW SIZE"                },
+        { .status = eBOOT_MSG_ERROR_FW_VER,         .desc = "ERROR - FW VERSION"             },
+    };
+
+    /**
+     *  Number of all message status descriptions
+     */
+    static const uint16_t gu16_msg_status_des_num_of = (uint16_t) ( sizeof( g_msg_status_desc ) / sizeof( boot_msg_status_desc_t ));
+
+#endif // ( 1 == BOOT_CFG_DEBUG_EN )
+
+
 ////////////////////////////////////////////////////////////////////////////////
 // Function prototypes
 ////////////////////////////////////////////////////////////////////////////////
+
+
+#if ( 1 == BOOT_CFG_DEBUG_EN )
+    static const char * boot_get_msg_status_str(const boot_msg_status_t msg_status);
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 // Functions
@@ -71,7 +114,7 @@ void boot_com_connect_rsp_msg_rcv_cb(const boot_msg_status_t msg_status)
 
 
 
-    BOOT_DBG_PRINT( "Connect Response Bootloader Message Reception Callback. Status: 0x%02X", msg_status );
+    BOOT_DBG_PRINT( "Connect Response Bootloader Message Reception Callback. Status: %s", boot_get_msg_status_str( msg_status ));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -106,7 +149,7 @@ void boot_com_prepare_rsp_msg_rcv_cb(const boot_msg_status_t msg_status)
 {
 
 
-    BOOT_DBG_PRINT( "Prepare Response Bootloader Message Reception Callback. Status: 0x%02X", msg_status );
+    BOOT_DBG_PRINT( "Prepare Response Bootloader Message Reception Callback. Status: %s", boot_get_msg_status_str( msg_status ));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -140,7 +183,7 @@ void boot_com_flash_rsp_msg_rcv_cb(const boot_msg_status_t msg_status)
 {
 
 
-    BOOT_DBG_PRINT( "Flash Response Bootloader Message Reception Callback. Status: 0x%02X", msg_status );
+    BOOT_DBG_PRINT( "Flash Response Bootloader Message Reception Callback. Status: %s", boot_get_msg_status_str( msg_status ));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -169,7 +212,7 @@ void boot_com_exit_rsp_msg_rcv_cb(const boot_msg_status_t msg_status)
 {
 
 
-    BOOT_DBG_PRINT( "Exit Response Bootloader Message Reception Callback. Status: 0x%02X", msg_status );
+    BOOT_DBG_PRINT( "Exit Response Bootloader Message Reception Callback. Status: %s", boot_get_msg_status_str( msg_status ));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -201,8 +244,37 @@ void boot_com_info_rsp_msg_rcv_cb(const uint32_t boot_ver, const boot_msg_status
 
     BOOT_DBG_PRINT( "Info Response Bootloader Message Reception Callback" );
     BOOT_DBG_PRINT( "    - boot_ver: 0x%08X", boot_ver );
-    BOOT_DBG_PRINT( "    - Status:   0x%02X", msg_status );
+    BOOT_DBG_PRINT( "    - Status:   %s", boot_get_msg_status_str( msg_status ));
 }
+
+#if ( 1 == BOOT_CFG_DEBUG_EN )
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /**
+    *       Get command message status string
+    *
+    * @param[in]    cmd_type    - SCP command type
+    * @return       str         - SCP command type description
+    */
+    ////////////////////////////////////////////////////////////////////////////////
+    static const char * boot_get_msg_status_str(const boot_msg_status_t msg_status)
+    {
+        uint16_t i = 0;
+        const char * str = "N/A";
+
+        for ( i = 0; i < gu16_msg_status_des_num_of; i++ )
+        {
+            if ( msg_status == g_msg_status_desc[i].status )
+            {
+                str =  (const char*) g_msg_status_desc[i].desc;
+                break;
+            }
+        }
+
+        return str;
+    }
+
+#endif // ( 1 == BOOT_CFG_DEBUG_EN )
 
 ////////////////////////////////////////////////////////////////////////////////
 /**

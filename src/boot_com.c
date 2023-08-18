@@ -37,7 +37,7 @@
 /**
  *  Bootloader message preamble
  */
-#define BOOT_MSG_PREAMBLE_VAL               ((uint16_t)( 0x07B0U ))
+#define BOOT_MSG_PREAMBLE_VAL               ((uint16_t)( 0x070BU ))
 
 /**
  *  Booloader communication commands
@@ -328,6 +328,7 @@ static boot_status_t boot_parse_rcv_header(boot_parser_t * const p_parser, boot_
                 else
                 {
                     status = eBOOT_ERROR_CRC;
+                    BOOT_DBG_PRINT( "ERROR Message CRC invalid!" );
                 }
             }
 
@@ -391,6 +392,7 @@ static boot_status_t boot_parse_rcv_payload(boot_parser_t * const p_parser, cons
         else
         {
             status = eBOOT_ERROR_CRC;
+            BOOT_DBG_PRINT( "ERROR Message CRC invalid!" );
         }
     }
 
