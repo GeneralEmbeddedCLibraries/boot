@@ -14,6 +14,7 @@
 ##  IMPORTS
 #################################################################################################
 import argparse
+import shutil
 
 #################################################################################################
 ##  DEFINITIONS
@@ -74,28 +75,51 @@ def main():
 
     print( file_path_in.split(".") )
 
-    try:
-        if "bin" != file_path_in.split(".")[1]:
-            print( "ERROR: Invalid file format" ) 
-        
-        else:
-            # Open as binary file
-            bin_file = open( file_path_in, "wb")
+    if "bin" != file_path_in.split(".")[1] or "bin" != file_path_out.split(".")[1]:
+        print( "ERROR: Invalid file format" ) 
+    
+    else:
+        # Copy inputed binary file
+        shutil.copyfile( file_path_in, file_path_out )
+
+        # Open outputed binary file
+        bin_out_file    = open( file_path_out, "ab")
+
+        # Calculate CRC
+        # TODO:
+
+        # Count application size
+        # TODO: 
+
+        # Open file
+        with open(file_path_in, mode='rb') as file: 
+            fileContent = file.read()
+
+            binary_line = ""
+            for n, byte in enumerate( fileContent ):
+                
+                if n % 16 == 0 and n > 0:
+                    print( binary_line )
+                    binary_line = ""
+            
+                binary_line += "%02X " % byte
 
 
 
 
 
-            print("")
-            print("====================================================================")
-            print("     %s" % TOOL_DESCRIPTION )
-            print("====================================================================")
-            print("Firmware image successfuly signed!\n")
 
 
-    except:
-        print( "ERROR: Invalid inputed file!" ) 
 
+
+
+
+
+        print("")
+        print("====================================================================")
+        print("     %s" % TOOL_DESCRIPTION )
+        print("====================================================================")
+        print("Firmware image successfuly signed!\n")
 
 
 
