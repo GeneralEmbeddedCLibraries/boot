@@ -67,17 +67,37 @@ def arg_parser():
 # ===============================================================================
 def main():
     
-    file_in, file_out = arg_parser()
+    file_path_in, file_path_out = arg_parser()
 
-    print( "Inputed file: %s" % file_in )
-    print( "Outputed file: %s" % file_out )
+    print( "Inputed file: %s" % file_path_in )
+    print( "Outputed file: %s" % file_path_out )
+
+    print( file_path_in.split(".") )
+
+    try:
+        if "bin" != file_path_in.split(".")[1]:
+            print( "ERROR: Invalid file format" ) 
+        
+        else:
+            # Open as binary file
+            bin_file = open( file_path_in, "wb")
 
 
-    print("")
-    print("====================================================================")
-    print("     %s" % TOOL_DESCRIPTION )
-    print("====================================================================")
-    print("Firmware image successfuly signed!\n")
+
+
+
+            print("")
+            print("====================================================================")
+            print("     %s" % TOOL_DESCRIPTION )
+            print("====================================================================")
+            print("Firmware image successfuly signed!\n")
+
+
+    except:
+        print( "ERROR: Invalid inputed file!" ) 
+
+
+
 
 
 
