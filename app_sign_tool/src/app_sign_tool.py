@@ -16,6 +16,16 @@
 import argparse
 import shutil
 
+import os
+
+
+
+# TODO: 
+#       1. Application header start & size customization
+#       2. 
+#
+#
+
 #################################################################################################
 ##  DEFINITIONS
 #################################################################################################
@@ -59,6 +69,69 @@ def arg_parser():
 
     return file_in, file_out
 
+# ===============================================================================
+# @brief  Binary file Class
+# ===============================================================================
+class BinFile:
+
+    # Access type
+    READ_WRITE  = "r+b"      # Puts pointer to start of file 
+    WRITE_ONLY  = "wb"       # Erase complete file
+    READ_ONLY   = "rb"
+    APPEND      = "a+b"      # This mode puts pointer to EOF. Access: Read & Write
+
+    # ===============================================================================
+    # @brief  Binary file constructor
+    #
+    # @param[in]    file    - File name
+    # @param[in]    access  - Access level
+    # @return       void
+    # ===============================================================================
+    def __init__(self, file, access=READ_ONLY):
+
+        # Store file name
+        self.file = file
+
+        try:
+            if os.path.isfile(self.file):
+                self.file = open( self.file, access )
+        except Exception as e:
+            print(e)
+
+    # ===============================================================================
+    # @brief  Write to binary file
+    #
+    # @param[in]    addr    - Address to write to
+    # @param[in]    val     - Value to write as list
+    # @return       void
+    # ===============================================================================
+    def write(self, addr, val):
+        self.__set_ptr(addr)
+        self.file.write( bytearray( val ))
+
+    # ===============================================================================
+    # @brief  Read from binary file
+    #
+    # @param[in]    addr    - Address to read from
+    # @param[in]    size    - Sizeof read in bytes
+    # @return       data    - Readed data
+    # ===============================================================================
+    def read(self, addr, size):
+        self.__set_ptr(addr)
+        data = self.file.read(size)
+        return data
+
+    # ===============================================================================
+    # @brief  Set file pointer
+    #
+    # @note     Pointer is being evaluated based on binary file value
+    #
+    # @param[in]    offset  - Pointer offset
+    # @return       void
+    # ===============================================================================
+    def __set_ptr(self, offset):
+        self.file.seek(offset)                    
+
 
 
 # ===============================================================================
@@ -83,7 +156,17 @@ def main():
         shutil.copyfile( file_path_in, file_path_out )
 
         # Open outputed binary file
-        bin_out_file    = open( file_path_out, "ab")
+        #bin_out_file = open( file_path_out, "ab")
+
+        out_file = BinFile( file_path_out, access=BinFile.READ_WRITE)
+
+        out_file.write( 0xFF, [0xAA, 0x12, 0x51] )
+
+        for byte in out_file.read( 0xFF, 4 ):
+            print( "%02X" % byte )
+
+
+        #bin_out_file.write( bytearray( [0x11, 0xAA, 0x55] ) )
 
         # Calculate CRC
         # TODO:
@@ -95,14 +178,10 @@ def main():
         with open(file_path_in, mode='rb') as file: 
             fileContent = file.read()
 
-            binary_line = ""
             for n, byte in enumerate( fileContent ):
-                
-                if n % 16 == 0 and n > 0:
-                    print( binary_line )
-                    binary_line = ""
-            
-                binary_line += "%02X " % byte
+                pass
+
+
 
 
 
