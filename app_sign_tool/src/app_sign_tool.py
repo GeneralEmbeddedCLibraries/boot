@@ -69,6 +69,8 @@ def arg_parser():
 
     return file_in, file_out
 
+
+
 # ===============================================================================
 # @brief  Binary file Class
 # ===============================================================================
@@ -120,6 +122,9 @@ class BinFile:
         self.__set_ptr(addr)
         data = self.file.read(size)
         return data
+    
+    def size(self):
+        return len( self.read( 0, None ))
 
     # ===============================================================================
     # @brief  Set file pointer
@@ -156,30 +161,14 @@ def main():
         shutil.copyfile( file_path_in, file_path_out )
 
         # Open outputed binary file
-        #bin_out_file = open( file_path_out, "ab")
-
         out_file = BinFile( file_path_out, access=BinFile.READ_WRITE)
 
-        out_file.write( 0xFF, [0xAA, 0x12, 0x51] )
-
-        for byte in out_file.read( 0xFF, 4 ):
-            print( "%02X" % byte )
-
-
-        #bin_out_file.write( bytearray( [0x11, 0xAA, 0x55] ) )
-
-        # Calculate CRC
-        # TODO:
+        # Calculate binary CRC
+        print("Size of binary: %s bytes" % out_file.size())
 
         # Count application size
         # TODO: 
 
-        # Open file
-        with open(file_path_in, mode='rb') as file: 
-            fileContent = file.read()
-
-            for n, byte in enumerate( fileContent ):
-                pass
 
 
 
