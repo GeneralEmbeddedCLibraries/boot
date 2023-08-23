@@ -77,7 +77,7 @@ def arg_parser():
 # @brief  Calculate CRC-32
 #
 # @param[in]    data    - Inputed data
-# @return       crc32   - Calculate CRC-32
+# @return       crc32   - Calculated CRC-32
 # ===============================================================================
 def calc_crc32(data):
     poly = 0x04C11DB7
@@ -100,7 +100,7 @@ def calc_crc32(data):
 # @brief  Calculate CRC-8
 #
 # @param[in]    data    - Inputed data
-# @return       crc8    - Calculate CRC8
+# @return       crc8    - Calculated CRC8
 # ===============================================================================
 def calc_crc8(data):
     poly = 0x07
@@ -222,10 +222,10 @@ def main():
             app_crc = calc_crc32( out_file.read( 0, None ))
 
             # Write app lenght into application header
-            out_file.write( APP_HEADER_APP_SIZE_ADDR, struct.pack('i', int(app_size)) )
+            out_file.write( APP_HEADER_APP_SIZE_ADDR, struct.pack('I', int(app_size)))
 
             # Write app CRC into application header
-            out_file.write( APP_HEADER_APP_CRC_ADDR, struct.pack('i', int(app_crc)) )
+            out_file.write( APP_HEADER_APP_CRC_ADDR, struct.pack('I', int(app_crc)))
 
             # Calculate application header CRC
             app_header_crc = calc_crc8( out_file.read( 0, APP_HEADER_SIZE_BYTE ))
