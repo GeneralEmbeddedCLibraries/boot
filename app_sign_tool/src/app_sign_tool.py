@@ -88,8 +88,7 @@ def calc_crc32(data):
         crc32 = (( crc32 ^ byte ) & 0xFFFFFFFF )
 
         for n in range( 32 ):
-
-            if crc32 & 0x80000000:
+            if 0x80000000 == ( crc32 & 0x80000000 ):
                 crc32 = (( crc32 << 1 ) ^ poly )
             else:
                 crc32 = ( crc32 << 1 );
@@ -111,8 +110,7 @@ def calc_crc8(data):
         crc8 = (( crc8 ^ byte ) & 0xFF )
 
         for n in range( 8 ):
-
-            if crc8 & 0x80:
+            if 0x80 == ( crc8 & 0x80 ):
                 crc8 = (( crc8 << 1 ) ^ poly )
             else:
                 crc8 = ( crc8 << 1 );
@@ -226,7 +224,8 @@ def main():
             app_size = out_file.size()
 
             # Calculate application CRC
-            app_crc = calc_crc32( out_file.read( 0, None ))
+            # NOTE: Start calculation after application header!
+            app_crc = calc_crc32( out_file.read( APP_HEADER_SIZE_BYTE, None ))
 
             # Write app lenght into application header
             out_file.write( APP_HEADER_APP_SIZE_ADDR, struct.pack('I', int(app_size)))
@@ -235,7 +234,8 @@ def main():
             out_file.write( APP_HEADER_APP_CRC_ADDR, struct.pack('I', int(app_crc)))
 
             # Calculate application header CRC
-            app_header_crc = calc_crc8( out_file.read( 0, APP_HEADER_SIZE_BYTE ))
+            # NOTE: Ignore last CRC field!
+            app_header_crc = calc_crc8( out_file.read( 0, APP_HEADER_SIZE_BYTE - 1 ))
 
             # Write application header crc
             out_file.write( APP_HEADER_CRC_ADDR, [app_header_crc] )
