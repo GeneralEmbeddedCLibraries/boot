@@ -13,7 +13,7 @@ Application header is expected to be at the begining of firmware binary and stru
 
 For STM32 CubeIDE users go to: *Properties->C/C++ Build->Settings->Build Steps->Post-Build steps*
 
-Example for signature tool V0.1.0:
+Example for using signature tool *V0.1.0*, where *${ProjName}.bin* file is inputed and *${ProjName}__SIGNED.bin* file is generated:
 ```
 ../"mySrc"/middleware/boot/boot/app_sign_tool/delivery/V0.1.0/app_sign_tool__V0_1_0.exe -f ../${ConfigName}/${ProjName}.bin -o ../${ConfigName}/${ProjName}__SIGNED.bin
 ```
