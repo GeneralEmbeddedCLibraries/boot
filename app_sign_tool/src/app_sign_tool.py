@@ -198,13 +198,20 @@ class BinFile:
 # ===============================================================================
 def main():
     
+    # Intro informations
+    print("====================================================================")
+    print("     %s" % TOOL_DESCRIPTION )
+    print("====================================================================")
+
     # Get arguments
     file_path_in, file_path_out = arg_parser()
 
-    if "bin" != file_path_in.split(".")[1] or "bin" != file_path_out.split(".")[1]:
+    # Check for correct file extension 
+    if "bin" != file_path_in.split(".")[-1] or "bin" != file_path_out.split(".")[-1]:
         print( "ERROR: Invalid file format" )
         raise RuntimeError 
     
+    # Both files are binary
     else:
         # Copy inputed binary file
         shutil.copyfile( file_path_in, file_path_out )
@@ -233,11 +240,8 @@ def main():
             # Write application header crc
             out_file.write( APP_HEADER_CRC_ADDR, [app_header_crc] )
 
-            print("")
-            print("====================================================================")
-            print("     %s" % TOOL_DESCRIPTION )
-            print("====================================================================")
-            print("Firmware image successfuly signed!\n")
+            # Success info
+            print("SUCCESS: Firmware image successfuly signed!\n")
 
         else:
             print( "ERROR: Application header version not supported!" ) 
