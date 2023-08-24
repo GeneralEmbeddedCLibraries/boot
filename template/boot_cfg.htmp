@@ -102,7 +102,7 @@
  *
  *  Unit: ms
  */
-#define BOOT_CFG_COM_IDLE_TIMEOUT_MS            ( 10U )
+#define BOOT_CFG_COM_IDLE_TIMEOUT_MS            ( 20U )
 
 /**
  *  Get system timetick in 32-bit unsigned integer form

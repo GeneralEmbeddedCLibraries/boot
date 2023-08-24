@@ -780,23 +780,6 @@ static void boot_parse_info_rsp(const boot_header_t * const p_header, const uint
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
-*       Initialize Bootloader communication interface
-*
-* @return       status - Status of operation
-*/
-////////////////////////////////////////////////////////////////////////////////
-boot_status_t boot_com_init(void)
-{
-    boot_status_t status = eBOOT_OK;
-
-    // Init interface
-    status = boot_if_init();
-
-    return status;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/**
 *       Handle Bootloader communication
 *
 * @return       status - Status of operation

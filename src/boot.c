@@ -26,6 +26,7 @@
 
 #include "boot.h"
 #include "boot_com.h"
+#include "../../boot_if.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 // Definitions
@@ -296,8 +297,8 @@ boot_status_t boot_init(void)
 {
     boot_status_t status = eBOOT_OK;
 
-    // Initialize communication
-    status |= boot_com_init();
+    // Initialize bootloader interfaces
+    status |= boot_if_init();
 
     return status;
 }

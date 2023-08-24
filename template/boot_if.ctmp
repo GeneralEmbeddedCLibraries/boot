@@ -32,7 +32,11 @@
 
 // USER INCLUDE BEGIN...
 
+// Communication
 #include "drivers/peripheral/uart/uart/src/uart.h"
+
+// Internal MCU flash
+#include "drivers/peripheral/flash/flash/src/flash.h"
 
 // USER INCLUDE END...
 
@@ -97,6 +101,11 @@ boot_status_t boot_if_init(void)
     // USER CODE BEGIN...
 
     if ( eUART_OK != uart_init( eUART_BOOT ))
+    {
+        status = eBOOT_ERROR;
+    }
+
+    if ( eFLASH_OK != flash_init())
     {
         status = eBOOT_ERROR;
     }
@@ -173,6 +182,89 @@ boot_status_t boot_if_clear_rx_buf(void)
     // USER CODE BEGIN...
 
     if ( eUART_OK != uart_clear_rx_buf( eUART_BOOT ))
+    {
+        status = eBOOT_ERROR;
+    }
+
+    // USER CODE END...
+
+    return status;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Write data to internal MCU flash
+*
+*   @note In case of write error function shall return "eBOOT_ERROR" code!
+*
+* @param[in]    addr    - Address of flash to write to
+* @param[in]    size    - Size of data to write in bytes
+* @param[in]    p_data  - Data to write
+* @return       status  - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
+boot_status_t boot_if_flash_write(const uint32_t addr, const uint32_t size, const uint8_t * const p_data)
+{
+    boot_status_t status = eBOOT_OK;
+
+    // USER CODE BEGIN...
+
+    if ( eFLASH_OK != flash_write( addr, size, p_data ))
+    {
+        status = eBOOT_ERROR;
+    }
+
+    // USER CODE END...
+
+    return status;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Read data from internal MCU flash
+*
+*   @note In case of read error function shall return "eBOOT_ERROR" code!
+*
+* @param[in]    addr    - Address of flash to write to
+* @param[in]    size    - Size of data to write in bytes
+* @param[out]    p_data  - Data to write
+* @return       status  - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
+boot_status_t boot_if_flash_read(const uint32_t addr, const uint32_t size, uint8_t * const p_data)
+{
+    boot_status_t status = eBOOT_OK;
+
+    // USER CODE BEGIN...
+
+    if ( eFLASH_OK != flash_read( addr, size, p_data ))
+    {
+        status = eBOOT_ERROR;
+    }
+
+    // USER CODE END...
+
+    return status;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Erase data in internal MCU flash
+*
+*   @note In case of write error function shall return "eBOOT_ERROR" code!
+*
+* @param[in]    addr    - Address of flash to write to
+* @param[in]    size    - Size of data to write in bytes
+* @return       status  - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
+boot_status_t boot_if_flash_erase(const uint32_t addr, const uint32_t size)
+{
+    boot_status_t status = eBOOT_OK;
+
+    // USER CODE BEGIN...
+
+    if ( eFLASH_OK != flash_erase( addr, size ))
     {
         status = eBOOT_ERROR;
     }
