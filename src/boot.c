@@ -28,9 +28,23 @@
 #include "boot_com.h"
 #include "../../boot_if.h"
 
+// Revision
+#include "revision/revision/src/version.h"
+
 ////////////////////////////////////////////////////////////////////////////////
 // Definitions
 ////////////////////////////////////////////////////////////////////////////////
+
+
+/**
+ *  Compatibility check with REVISION
+ *
+ *  Support version V1.3.x up
+ */
+_Static_assert( 1 == VER_VER_MAJOR );
+_Static_assert( 3 >= VER_VER_MAJOR );
+
+
 
 #if ( 1 == BOOT_CFG_DEBUG_EN )
 
@@ -77,6 +91,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Function prototypes
 ////////////////////////////////////////////////////////////////////////////////
+static boot_status_t    boot_app_head_read      (ver_app_header_t * const p_head);
+static uint8_t          boot_app_head_calc_crc  (const ver_app_header_t * const p_head);
+
+static uint32_t         boot_fw_image_calc_crc  (const uint32_t size);
 
 
 #if ( 1 == BOOT_CFG_DEBUG_EN )
@@ -86,6 +104,92 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Functions
 ////////////////////////////////////////////////////////////////////////////////
+
+static boot_status_t boot_app_head_read(ver_app_header_t * const p_head)
+{
+    boot_status_t status = eBOOT_OK;
+
+    status = boot_if_flash_read( BOOT_CFG_APP_HEAD_ADDR, BOOT_CFG_APP_HEAD_SIZE, (uint8_t*) p_head );
+
+    return status;
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Calculate application header CRC
+*
+* @param[in]    p_head  - Pointer to application header
+* @return       crc8    - CRC8 of application header
+*/
+////////////////////////////////////////////////////////////////////////////////
+static uint8_t boot_app_head_calc_crc(const ver_app_header_t * const p_head)
+{
+    const   uint8_t         poly    = 0x07U;    // CRC-8-CCITT
+    const   uint8_t         seed    = 0xB6U;    // Custom seed
+            uint8_t         crc8    = seed;
+    const   uint8_t * const p_data  = (uint8_t*) p_head;
+
+    // NOTE: Ignore last CRC field (BOOT_CFG_APP_HEAD_SIZE - 1U)
+    for (uint32_t i = 0; i < ( BOOT_CFG_APP_HEAD_SIZE - 1U ); i++)
+    {
+        crc8 = (( crc8 ^ p_data[i] ) & 0xFFU );
+
+        for (uint8_t j = 0U; j < 8U; j++)
+        {
+            if ( crc8 & 0x80U )
+            {
+                crc8 = (( crc8 << 1U ) ^ poly );
+            }
+            else
+            {
+                crc8 = ( crc8 << 1U );
+            }
+        }
+    }
+
+    return ( crc8 & 0xFFU );
+}
+
+static uint32_t boot_fw_image_calc_crc(const uint32_t size)
+{
+    const   uint32_t    poly    = 0x04C11DB7;
+    const   uint32_t    seed    = 0x10101010;
+            uint32_t    crc32   = seed;
+            uint8_t     data    = 0U;
+
+    for (uint32_t i = 0; i < ( size - BOOT_CFG_APP_HEAD_SIZE ); i++)
+    {
+        const uint32_t addr = BOOT_CFG_APP_HEAD_ADDR + BOOT_CFG_APP_HEAD_SIZE + i;
+
+        // Read byte from application
+        (void) boot_if_flash_read( addr, 1U, (uint8_t*)&data );
+
+        crc32 = (( crc32 ^ data ) & 0xFFFFFFFFU );
+
+        for (uint8_t j = 0U; j < 32U; j++)
+        {
+            if ( crc32 & 0x80000000U )
+            {
+                crc32 = (( crc32 << 1U ) ^ poly );
+            }
+            else
+            {
+                crc32 = ( crc32 << 1U );
+            }
+        }
+
+/*        if ( addr == 0xB800 )
+        {
+            __asm__("BKPT");
+        }*/
+    }
+
+    return ( crc32 & 0xFFFFFFFFU );
+}
+
+
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -299,6 +403,21 @@ boot_status_t boot_init(void)
 
     // Initialize bootloader interfaces
     status |= boot_if_init();
+
+
+
+    ver_app_header_t app_header = {0};
+
+    // Read application header
+    boot_app_head_read( &app_header );
+
+    const uint8_t crc = boot_app_head_calc_crc( &app_header );
+
+    BOOT_DBG_PRINT( "App header CRC: 0x%02X", crc );
+
+    const uint32_t app_crc = boot_fw_image_calc_crc( app_header.app_size );
+
+    BOOT_DBG_PRINT( "App CRC: 0x%08X", app_crc );
 
     return status;
 }

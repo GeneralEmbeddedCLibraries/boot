@@ -112,7 +112,7 @@ def calc_crc8(data):
 
         for n in range( 8 ):
 
-            if crc8 & 0x80:
+            if 0x80 == ( crc8 & 0x80 ):
                 crc8 = (( crc8 << 1 ) ^ poly )
             else:
                 crc8 = ( crc8 << 1 );
