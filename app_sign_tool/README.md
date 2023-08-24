@@ -1,11 +1,13 @@
 # **Application Signature Tool**
 
-Application (Firmware) Signature Tool prepares application header, it calculated CRC and binary size. That informations are later crutial for bootloader validation logic to determine if new application is suitable for given system. Tool is invoked in post-build process, after binary file is composed. 
+Application (Firmware) Signature Tool takes binary file, process it and assemble **application header**. Look at the [Revision](https://github.com/GeneralEmbeddedCLibraries/revision) module for more informations about application header.
+
+Signature tool is invoked in post-build process, after binary file is composed.
 
 ## **Limitations**
 
 ### **1. Application header**
-Application header is expected at the begining of firmware binary and structured according to [Revision](https://github.com/GeneralEmbeddedCLibraries/revision) module specifications.
+Application header is expected to be at the begining of firmware binary and structured according to [Revision](https://github.com/GeneralEmbeddedCLibraries/revision) module specifications.
 
 ## **STM32 CubeIDE Setup**
 
