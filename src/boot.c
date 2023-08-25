@@ -105,6 +105,14 @@ static uint32_t         boot_fw_image_calc_crc  (const uint32_t size);
 // Functions
 ////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Read application header
+*
+* @param[in]    p_head  - Pointer to application header
+* @return       status	- Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
 static boot_status_t boot_app_head_read(ver_app_header_t * const p_head)
 {
     boot_status_t status = eBOOT_OK;
@@ -113,8 +121,6 @@ static boot_status_t boot_app_head_read(ver_app_header_t * const p_head)
 
     return status;
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -152,6 +158,20 @@ static uint8_t boot_app_head_calc_crc(const ver_app_header_t * const p_head)
     return ( crc8 & 0xFFU );
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Calculate firmware image CRC
+*
+* @note	 	Firmware image CRC is being calculated only across application code,
+* 			application header is not included into CRC calculations.
+*
+* @note		This function expects application header at the top
+* 			of new firmware image!
+*
+* @param[in]    size 	- Size of firmware image in bytes
+* @return       crc32   - CRC32 of application image
+*/
+////////////////////////////////////////////////////////////////////////////////
 static uint32_t boot_fw_image_calc_crc(const uint32_t size)
 {
     const   uint32_t    poly    = 0x04C11DB7;
@@ -161,11 +181,13 @@ static uint32_t boot_fw_image_calc_crc(const uint32_t size)
 
     for (uint32_t i = 0; i < ( size - BOOT_CFG_APP_HEAD_SIZE ); i++)
     {
+    	// Ignore application header from CRC calc
         const uint32_t addr = BOOT_CFG_APP_HEAD_ADDR + BOOT_CFG_APP_HEAD_SIZE + i;
 
         // Read byte from application
         (void) boot_if_flash_read( addr, 1U, (uint8_t*)&data );
 
+        // Calc CRC-32
         crc32 = (( crc32 ^ data ) & 0xFFFFFFFFU );
 
         for (uint8_t j = 0U; j < 32U; j++)
@@ -179,11 +201,6 @@ static uint32_t boot_fw_image_calc_crc(const uint32_t size)
                 crc32 = ( crc32 << 1U );
             }
         }
-
-/*        if ( addr == 0xB800 )
-        {
-            __asm__("BKPT");
-        }*/
     }
 
     return ( crc32 & 0xFFFFFFFFU );
