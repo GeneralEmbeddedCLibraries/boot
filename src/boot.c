@@ -45,6 +45,19 @@ _Static_assert( 1 == VER_VER_MAJOR );
 _Static_assert( 3 >= VER_VER_MAJOR );
 
 
+/**
+ *  	Start of application address
+ *
+ *  @note 	Right after application header!
+ */
+#define BOOT_APP_START_ADDR				( BOOT_CFG_APP_HEAD_ADDR + BOOT_CFG_APP_HEAD_SIZE )
+
+
+/**
+ *  Reset vector function pointer
+ */
+typedef void (*p_func)(void);
+
 
 #if ( 1 == BOOT_CFG_DEBUG_EN )
 
@@ -93,8 +106,9 @@ _Static_assert( 3 >= VER_VER_MAJOR );
 ////////////////////////////////////////////////////////////////////////////////
 static boot_status_t    boot_app_head_read      (ver_app_header_t * const p_head);
 static uint8_t          boot_app_head_calc_crc  (const ver_app_header_t * const p_head);
-
 static uint32_t         boot_fw_image_calc_crc  (const uint32_t size);
+static boot_status_t	boot_fw_image_validate	(void);
+static boot_status_t 	boot_start_application	(void);
 
 
 #if ( 1 == BOOT_CFG_DEBUG_EN )
@@ -207,6 +221,72 @@ static uint32_t boot_fw_image_calc_crc(const uint32_t size)
 }
 
 
+static boot_status_t boot_fw_image_validate(void)
+{
+	boot_status_t 	 status 	= eBOOT_OK;
+    ver_app_header_t app_header = {0};
+
+    // Read application header
+    boot_app_head_read( &app_header );
+
+    // Calculate application header crc
+    const uint8_t app_head_crc_calc = boot_app_head_calc_crc( &app_header );
+
+    // Check app header CRC is valid
+    if ( app_header.crc == app_head_crc_calc )
+    {
+    	// Calculate firmware image crc
+    	const uint32_t fw_crc_calc = boot_fw_image_calc_crc( app_header.app_size );
+
+    	// FW image CRC valid
+    	if ( app_header.app_crc == fw_crc_calc )
+    	{
+    		BOOT_DBG_PRINT( "Firmware image OK!" );
+    	}
+
+    	// FW image corrupted
+    	else
+    	{
+        	status = eBOOT_ERROR_CRC;
+        	BOOT_DBG_PRINT( "ERROR: Firmware image corrupted!" );
+    	}
+    }
+
+    // Application header corrupted
+    else
+    {
+    	status = eBOOT_ERROR_CRC;
+    	BOOT_DBG_PRINT( "ERROR: Application header corrupted!" );
+    }
+
+	return status;
+}
+
+static boot_status_t boot_start_application(void)
+{
+	boot_status_t status = eBOOT_OK;
+
+	// Disable interrupts
+	__disable_irq();
+
+	// De-init application level code
+	status = boot_if_deinit();
+
+	if ( eBOOT_OK == status )
+	{
+		// Set stack pointer
+		__set_MSP( BOOT_APP_START_ADDR );
+
+		// Next address is reset vector for app
+		uint32_t app_addr = *(uint32_t*)( BOOT_APP_START_ADDR + 4U );
+		p_func p_app = (p_func)app_addr;
+
+		// Start Application
+		p_app();
+	}
+
+	return status;
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -422,19 +502,12 @@ boot_status_t boot_init(void)
     status |= boot_if_init();
 
 
+    if ( eBOOT_OK == boot_fw_image_validate())
+    {
+    	// Jump to application
+    	boot_start_application();
+    }
 
-    ver_app_header_t app_header = {0};
-
-    // Read application header
-    boot_app_head_read( &app_header );
-
-    const uint8_t crc = boot_app_head_calc_crc( &app_header );
-
-    BOOT_DBG_PRINT( "App header CRC: 0x%02X", crc );
-
-    const uint32_t app_crc = boot_fw_image_calc_crc( app_header.app_size );
-
-    BOOT_DBG_PRINT( "App CRC: 0x%08X", app_crc );
 
     return status;
 }
