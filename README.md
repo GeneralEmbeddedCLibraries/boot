@@ -17,7 +17,7 @@ Following data is being exhange between bootloader and application:
  1. **Boot reason**: Booting reason, to tell bootloader what actions shall be taken, either loading new image via PC or external FLASH, or just jump to application
  2. **Boot counter**: Safety/Reliablity counter that gets incerement on each boot by bootloader and later cleared by application after couple of minutes of stable operation
 
-Setup linker script for common shared memory between bootloader and application by first define nem memory region:
+Setup linker script for common shared memory between bootloader and application by first define new memory inside RAM called ***SHARED_MEM*** region:
 
 ```
 /* Memories definition */
@@ -37,15 +37,15 @@ MEMORY
 }
 ```
 
-And then also a *shared_mem* section to fill in symbols to *SHARED_MEM* space:
+Afterwards a ***shared_mem*** section needs to be defined that will fill in symbols to *SHARED_MEM* space:
 
 ```
-  /* No init section for app<->boot interface */
-  .noinit (NOLOAD):
-  {
-    /* place all symbols in input sections that start with .shared_mem */
-    KEEP(*(*.shared_mem*))
-  } > SHARED_MEM    
+/* No init section for app<->boot interface */
+.noinit (NOLOAD):
+{
+/* place all symbols in input sections that start with .shared_mem */
+KEEP(*(*.shared_mem*))
+} > SHARED_MEM    
 ```
 
 Change bootloader configuration for shared memory linker directive according to defined section in linker file:
