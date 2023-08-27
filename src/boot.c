@@ -220,7 +220,16 @@ static uint32_t boot_fw_image_calc_crc(const uint32_t size)
     return ( crc32 & 0xFFFFFFFFU );
 }
 
-
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Validate firmware image
+*
+* @note 	That function checks for application header CRC and complete
+* 			firmware image CRC.
+*
+* @return       status - Status of validation
+*/
+////////////////////////////////////////////////////////////////////////////////
 static boot_status_t boot_fw_image_validate(void)
 {
 	boot_status_t 	 status 	= eBOOT_OK;
@@ -262,6 +271,16 @@ static boot_status_t boot_fw_image_validate(void)
 	return status;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Start (Jump) to application code
+*
+* @note 	That function has ARM Cortex-M specific commands! If bootloader will
+* 			be used on other uC then this part of code shall be adopted!
+*
+* @return       status - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
 static boot_status_t boot_start_application(void)
 {
 	boot_status_t status = eBOOT_OK;
@@ -287,7 +306,6 @@ static boot_status_t boot_start_application(void)
 
 	return status;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -505,7 +523,10 @@ boot_status_t boot_init(void)
     if ( eBOOT_OK == boot_fw_image_validate())
     {
     	// Jump to application
-    	boot_start_application();
+    	if ( 1 )
+    	{
+    		boot_start_application();
+    	}
     }
 
 
