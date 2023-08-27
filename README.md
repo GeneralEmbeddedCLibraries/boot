@@ -17,6 +17,9 @@ Following data is being exhange between bootloader and application:
  1. **Boot reason**: Booting reason, to tell bootloader what actions shall be taken, either loading new image via PC or external FLASH, or just jump to application
  2. **Boot counter**: Safety/Reliablity counter that gets incerement on each boot by bootloader and later cleared by application after couple of minutes of stable operation
 
+Shared memory space V1 is 32 bytes in size with following data structure:
+![](doc/pic/Shared_Memory_V1.png)
+
 Setup linker script for common shared memory between bootloader and application by first define new memory inside RAM called ***SHARED_MEM*** region:
 
 ```
@@ -48,7 +51,7 @@ KEEP(*(*.shared_mem*))
 } > SHARED_MEM    
 ```
 
-Change bootloader configuration for shared memory linker directive according to defined section in linker file:
+Change bootloader configuration for shared memory linker directive according to defined section in linker file inside *boot_cfg.h*:
 
 ```C
 /**
