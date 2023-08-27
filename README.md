@@ -10,6 +10,15 @@ Bootloader has custom, lightweight and pyhsical layer agnostics communication in
 ![](doc/pic/Bootloader_Sequence.png)
 
 
+## **Bootloader<->Application Communication**
+Bootloader and application data exchange takes over special RAM section defined as non-initialized aka. *.noinit* section. 
+
+Following data is being exhange between bootloader and application:
+ 1. **Stay in bootloader**: Flag to indicate bootloader should not jump to application  
+ 2. **Boot counter**: Safety/Reliablity counter that gets incerement on each boot by bootloader and later cleared by application after couple of minutes of stable operation
+
+More info about no-init memory: https://interrupt.memfault.com/blog/noinit-memory 
+
 ## **Dependencies**
 
 ### **1. Flash memory map**
@@ -26,6 +35,9 @@ TODO: Add more info here...
 
 
 ## **Limitations**
+
+### **1. ARM Cortex-M family**
+Current implementation of bootloader **supports only ARM Cortex-M** processor family, as it expects stack pointer to be first 4 bytes of binary file, follow by reset vector handler. 
 
 
 ## **General Embedded C Libraries Ecosystem**
