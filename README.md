@@ -14,8 +14,48 @@ Bootloader has custom, lightweight and pyhsical layer agnostics communication in
 Bootloader and application data exchange takes over special RAM section defined as non-initialized aka. *.noinit* section. 
 
 Following data is being exhange between bootloader and application:
- 1. **Stay in bootloader**: Flag to indicate bootloader should not jump to application  
+ 1. **Boot reason**: Booting reason, to tell bootloader what actions shall be taken, either loading new image via PC or external FLASH, or just jump to application
  2. **Boot counter**: Safety/Reliablity counter that gets incerement on each boot by bootloader and later cleared by application after couple of minutes of stable operation
+
+Setup linker script for common shared memory between bootloader and application by first define nem memory region:
+
+```
+/* Memories definition */
+MEMORY
+{
+  RAM    		(xrw)    	: ORIGIN = 0x20000000, LENGTH = 128K - 0x20
+  
+  /* Reserve SHARED_MEM memory region at the end of RAM */
+  /* Region is used for app<->boot inteface and it is 32 bytes in size */
+  SHARED_MEM	(rw)		: ORIGIN = 0x20000000 + 128K - 0x20, LENGTH = 0x20
+  
+  /** Bootloader flash memory space */
+  BOOT_FLASH    (rx)   		: ORIGIN = 0x08000000, LENGTH = 32K
+  
+  /** Application flash memory space */
+  APP_FLASH    	(rx)   		: ORIGIN = 0x08008000, LENGTH = 512K-32K
+}
+```
+
+And then also a *shared_mem* section to fill in symbols to *SHARED_MEM* space:
+
+```
+  /* No init section for app<->boot interface */
+  .noinit (NOLOAD):
+  {
+    /* place all symbols in input sections that start with .shared_mem */
+    KEEP(*(*.shared_mem*))
+  } > SHARED_MEM    
+```
+
+Change bootloader configuration for shared memory linker directive according to defined section in linker file:
+
+```C
+/**
+ *  Shared memory section directive for linker
+ */
+#define __BOOT_CFG_SHARED_MEM__                	__attribute__((section(".shared_mem")))
+```
 
 More info about no-init memory: https://interrupt.memfault.com/blog/noinit-memory 
 
