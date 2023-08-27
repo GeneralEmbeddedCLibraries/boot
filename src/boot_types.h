@@ -74,6 +74,29 @@ typedef enum
     eBOOT_MSG_ERROR_FW_VER          = (uint8_t) ( 0x20U ),    /**<Uncompatible firmware version error */
 } boot_msg_status_t;
 
+/**
+ *  Boot reasons
+ */
+typedef enum
+{
+	eBOOT_REASON_NONE = 0U, /**<Idle, jumpt to application */
+	eBOOT_REASON_COM,       /**<Communication reason to stay in bootloader, expect boot sequence from Bootloader Manager */
+	eBOOT_REASON_FLASH,     /**<Boot from external FLAHS memory */
+
+	eBOOT_REASON_NUM_OF
+} boot_reason_t;
+
+/**
+ *  Shared memory layout
+ */
+typedef struct
+{
+	boot_reason_t   boot_reason;    /**<Boot reason */
+	uint8_t         boot_cnt;       /**<Boot counter */
+	uint8_t         res[28];        /**<Reserved space */
+	uint8_t         ver;            /**<Shared memory layout version */
+	uint8_t         crc;            /**<CRC8 of shared memory */
+} boot_shared_mem_t;
 
 #endif // __BOOT_TYPES_H
 

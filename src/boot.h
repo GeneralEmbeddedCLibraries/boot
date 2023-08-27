@@ -44,6 +44,10 @@
 #define BOOT_VER_MINOR          ( 1 )
 #define BOOT_VER_DEVELOP        ( 0 )
 
+/**
+ *  Boot reasons
+ */
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Functions

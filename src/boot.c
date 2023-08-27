@@ -44,6 +44,11 @@
 _Static_assert( 1 == VER_VER_MAJOR );
 _Static_assert( 3 >= VER_VER_MAJOR );
 
+/**
+ *  Compiler compatibility check
+ */
+BOOT_CFG_STATIC_ASSERT( sizeof(boot_shared_mem_t) == 32U );
+
 
 /**
  *  	Start of application address
@@ -76,6 +81,11 @@ typedef void (*p_func)(void);
 ////////////////////////////////////////////////////////////////////////////////
 // Variables
 ////////////////////////////////////////////////////////////////////////////////
+
+/**
+*  Shared memory between app and bootloader
+*/
+static volatile boot_shared_mem_t __BOOT_CFG_SHARED_MEM__ g_boot_shared_mem;
 
 #if ( 1 == BOOT_CFG_DEBUG_EN )
 
