@@ -42,7 +42,7 @@
  *  Support version V1.3.x up
  */
 _Static_assert( 1 == VER_VER_MAJOR );
-_Static_assert( 3 >= VER_VER_MAJOR );
+_Static_assert( 3 <= VER_VER_MINOR );
 
 /**
  *  Compiler compatibility check
@@ -604,20 +604,35 @@ void boot_com_info_rsp_msg_rcv_cb(const uint32_t boot_ver, const boot_msg_status
 * @note     Shall be used only by bootloader code!
 *           Do not call this function from application code!
 *
+* @note     If there is a valid application already placed in flash
+*           then this function will not return as app code will be started!
+*
 * @return       status - Status of initialization
 */
 ////////////////////////////////////////////////////////////////////////////////
+
+static void boot_wait(const uint32_t ms)
+{
+    if ( ms > 0 )
+    {
+        const uint32_t now = BOOT_GET_SYSTICK();
+
+        while((uint32_t)( BOOT_GET_SYSTICK() - now ) <= ms )
+        {
+            // No actions...
+        }
+    }
+}
+
 boot_status_t boot_init(void)
 {
     boot_status_t status = eBOOT_OK;
 
-    // Initialize bootloader interfaces
-    status |= boot_if_init();
-
     // Set shared memory version
     boot_init_shared_mem();
 
-
+    // Initialize bootloader interfaces
+    status |= boot_if_init();
 
     // TODO: Handle also that: BOOT_CFG_APP_BOOT_CNT_CHECK_EN
 
@@ -625,40 +640,42 @@ boot_status_t boot_init(void)
     // No reason to stay in bootloader
     if ( eBOOT_REASON_NONE == g_boot_shared_mem.boot_reason )
     {
-        // Enter exit state...
-        // TODO:
-
-
-        // TODO: Testing only.... SHALL BE REMOVED IN FUTURE!
+        // Application image validated OK
         if ( eBOOT_OK == boot_fw_image_validate())
         {
+            // Back door entry for bootloader
+            boot_wait( BOOT_CFG_WAIT_AT_STARTUP_MS );
+
             // Jump to application
-            if ( 1 )
-            {
-                boot_start_application();
-            }
+            boot_start_application();
+
+            // This line is not reached as processor starts executing application code...
         }
     }
 
-    // There is some reason to stay in bootloader
-    else
-    {
-        // TODO: Check what that reason is and act accordingly!
-
-
-        BOOT_DBG_PRINT( "Staying in bootloader as there was reason <%d> for that...", g_boot_shared_mem.boot_reason );
-    }
+    /**
+     *  NOTE: Bootloader ended up here only if:
+     *
+     *          1. There is no reason to stay in bootloader
+     *      OR  2. Application image is corrupted
+     */
 
 
     return status;
 }
 
-
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Handle bootloader logic
+*
+* @return       status - Status of initialization
+*/
+////////////////////////////////////////////////////////////////////////////////
 boot_status_t boot_hndl(void)
 {
     boot_status_t status = eBOOT_OK;
 
-    // Handle bootlaoder communication
+    // Handle bootloader communication
     status |= boot_com_hndl();
 
 

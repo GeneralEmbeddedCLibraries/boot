@@ -29,8 +29,6 @@
 #include <stdbool.h>
 
 #include "boot_types.h"
-
-// TODO: Remove
 #include "boot_com.h"
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -44,11 +42,6 @@
 #define BOOT_VER_MINOR          ( 1 )
 #define BOOT_VER_DEVELOP        ( 0 )
 
-/**
- *  Boot reasons
- */
-
-
 ////////////////////////////////////////////////////////////////////////////////
 // Functions
 ////////////////////////////////////////////////////////////////////////////////
@@ -61,7 +54,6 @@ boot_status_t   boot_shared_mem_set_boot_reason     (const boot_reason_t reason)
 boot_status_t   boot_shared_mem_get_boot_reason     (boot_reason_t * const p_reason);
 boot_status_t   boot_shared_mem_set_boot_cnt        (const uint8_t cnt);
 boot_status_t   boot_shared_mem_get_boot_cnt        (uint8_t * const p_cnt);
-
 
 
 // Events callback
