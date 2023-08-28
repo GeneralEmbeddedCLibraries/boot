@@ -114,6 +114,7 @@ static volatile boot_shared_mem_t __BOOT_CFG_SHARED_MEM__ g_boot_shared_mem;
 ////////////////////////////////////////////////////////////////////////////////
 // Function prototypes
 ////////////////////////////////////////////////////////////////////////////////
+static uint8_t          boot_calc_crc           (const uint8_t * const p_data, const uint16_t size);
 static boot_status_t    boot_app_head_read      (ver_app_header_t * const p_head);
 static uint8_t          boot_app_head_calc_crc  (const ver_app_header_t * const p_head);
 static uint32_t         boot_fw_image_calc_crc  (const uint32_t size);
@@ -128,6 +129,41 @@ static boot_status_t 	boot_start_application	(void);
 ////////////////////////////////////////////////////////////////////////////////
 // Functions
 ////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Calculate CRC-8
+*
+* @param[in]    p_data  - Pointer to data
+* @param[in]    size    - Size of data to calc crc
+* @return       crc8    - Calculated CRC
+*/
+////////////////////////////////////////////////////////////////////////////////
+static uint8_t boot_calc_crc(const uint8_t * const p_data, const uint16_t size)
+{
+    const   uint8_t poly    = 0x07U;    // CRC-8-CCITT
+    const   uint8_t seed    = 0xB6U;    // Custom seed
+            uint8_t crc8    = seed;
+
+    for (uint16_t i = 0; i < size; i++)
+    {
+        crc8 = ( crc8 ^ p_data[i] );
+
+        for (uint16_t j = 0U; j < 8U; j++)
+        {
+            if ( crc8 & 0x80U )
+            {
+                crc8 = (( crc8 << 1U ) ^ poly );
+            }
+            else
+            {
+                crc8 = ( crc8 << 1U );
+            }
+        }
+    }
+
+    return crc8;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -156,11 +192,12 @@ static boot_status_t boot_app_head_read(ver_app_header_t * const p_head)
 ////////////////////////////////////////////////////////////////////////////////
 static uint8_t boot_app_head_calc_crc(const ver_app_header_t * const p_head)
 {
-    const   uint8_t         poly    = 0x07U;    // CRC-8-CCITT
-    const   uint8_t         seed    = 0xB6U;    // Custom seed
-            uint8_t         crc8    = seed;
+    //const   uint8_t         poly    = 0x07U;    // CRC-8-CCITT
+    //const   uint8_t         seed    = 0xB6U;    // Custom seed
+            uint8_t         crc8    = 0;
     const   uint8_t * const p_data  = (uint8_t*) p_head;
 
+#if 0
     // NOTE: Ignore last CRC field (BOOT_CFG_APP_HEAD_SIZE - 1U)
     for (uint32_t i = 0; i < ( BOOT_CFG_APP_HEAD_SIZE - 1U ); i++)
     {
@@ -178,6 +215,9 @@ static uint8_t boot_app_head_calc_crc(const ver_app_header_t * const p_head)
             }
         }
     }
+#endif
+
+    crc8 = boot_calc_crc( p_data,  BOOT_CFG_APP_HEAD_SIZE - 1U );
 
     return ( crc8 & 0xFFU );
 }
@@ -570,6 +610,50 @@ boot_state_t boot_get_state(void)
     // TODO: ...
 
     return state;
+}
+
+
+boot_status_t boot_shared_mem_set_boot_reason(const boot_reason_t reason)
+{
+    boot_status_t status = eBOOT_OK;
+
+    // Unused
+    (void) reason;
+
+    return status;
+}
+
+
+boot_status_t boot_shared_mem_get_boot_reason(boot_reason_t * const p_reason)
+{
+    boot_status_t status = eBOOT_OK;
+
+    // Unused
+    (void) p_reason;
+
+    return status;
+}
+
+
+boot_status_t boot_shared_mem_set_boot_cnt(const uint8_t cnt)
+{
+    boot_status_t status = eBOOT_OK;
+
+    // Unused
+    (void) cnt;
+
+    return status;
+}
+
+
+boot_status_t boot_shared_mem_get_boot_cnt(uint8_t * const p_cnt)
+{
+    boot_status_t status = eBOOT_OK;
+
+    // Unused
+    (void) p_cnt;
+
+    return status;
 }
 
 
