@@ -28,13 +28,15 @@
 #include "boot_com.h"
 #include "../../boot_if.h"
 
+// Middleware
+#include "middleware/fsm/fsm/src/fsm.h"
+
 // Revision
 #include "revision/revision/src/version.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 // Definitions
 ////////////////////////////////////////////////////////////////////////////////
-
 
 /**
  *  Compatibility check with REVISION
@@ -43,6 +45,14 @@
  */
 _Static_assert( 1 == VER_VER_MAJOR );
 _Static_assert( 3 <= VER_VER_MINOR );
+
+/**
+ *  Compatibility check with FSM
+ *
+ *  Support version V1.1.x up
+ */
+_Static_assert( 1 == VER_VER_MAJOR );
+_Static_assert( 1 <= VER_VER_MINOR );
 
 /**
  *  Compiler compatibility check
@@ -91,6 +101,11 @@ typedef void (*p_func)(void);
 */
 static volatile boot_shared_mem_t __BOOT_CFG_SHARED_MEM__ g_boot_shared_mem;
 
+/**
+ *  Bootloader state
+ */
+
+
 #if ( 1 == BOOT_CFG_DEBUG_EN )
 
     /**
@@ -126,7 +141,7 @@ static boot_status_t	boot_fw_image_validate	    (void);
 static boot_status_t 	boot_start_application	    (void);
 static boot_status_t    boot_shared_mem_calc_crc    (const boot_shared_mem_t * const p_mem);
 static void             boot_init_shared_mem        (void);
-
+static void             boot_wait                   (const uint32_t ms);
 
 #if ( 1 == BOOT_CFG_DEBUG_EN )
     static const char * boot_get_msg_status_str(const boot_msg_status_t msg_status);
@@ -395,6 +410,29 @@ static void boot_init_shared_mem(void)
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
+*       Wait (delay)
+*
+* @param[in]    ms  - Time to wait in miliseconds
+* @return       void
+*/
+////////////////////////////////////////////////////////////////////////////////
+static void boot_wait(const uint32_t ms)
+{
+    if ( ms > 0 )
+    {
+        // Get current ticks
+        const uint32_t now = BOOT_GET_SYSTICK();
+
+        // Wait
+        while((uint32_t)( BOOT_GET_SYSTICK() - now ) <= ms )
+        {
+            // No actions...
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
 *       Connect Bootloader Message Reception Callback
 *
 * @return       void
@@ -610,20 +648,6 @@ void boot_com_info_rsp_msg_rcv_cb(const uint32_t boot_ver, const boot_msg_status
 * @return       status - Status of initialization
 */
 ////////////////////////////////////////////////////////////////////////////////
-
-static void boot_wait(const uint32_t ms)
-{
-    if ( ms > 0 )
-    {
-        const uint32_t now = BOOT_GET_SYSTICK();
-
-        while((uint32_t)( BOOT_GET_SYSTICK() - now ) <= ms )
-        {
-            // No actions...
-        }
-    }
-}
-
 boot_status_t boot_init(void)
 {
     boot_status_t status = eBOOT_OK;
@@ -649,17 +673,16 @@ boot_status_t boot_init(void)
             // Jump to application
             boot_start_application();
 
-            // This line is not reached as processor starts executing application code...
+            // This line is not reached as cpu starts executing application code...
         }
     }
 
     /**
-     *  NOTE: Bootloader ended up here only if:
+     *  @note   Bootloader ended up here only if:
      *
      *          1. There is no reason to stay in bootloader
      *      OR  2. Application image is corrupted
      */
-
 
     return status;
 }
