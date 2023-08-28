@@ -56,6 +56,7 @@ boot_status_t   boot_init       (void);
 boot_status_t   boot_hndl       (void);
 boot_state_t    boot_get_state  (void);
 
+boot_status_t   boot_shared_mem_get_version         (uint8_t * const p_version);
 boot_status_t   boot_shared_mem_set_boot_reason     (const boot_reason_t reason);
 boot_status_t   boot_shared_mem_get_boot_reason     (boot_reason_t * const p_reason);
 boot_status_t   boot_shared_mem_set_boot_cnt        (const uint8_t cnt);

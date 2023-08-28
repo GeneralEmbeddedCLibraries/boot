@@ -618,6 +618,10 @@ boot_status_t boot_init(void)
     boot_init_shared_mem();
 
 
+
+    // TODO: Handle also that: BOOT_CFG_APP_BOOT_CNT_CHECK_EN
+
+
     // No reason to stay in bootloader
     if ( eBOOT_REASON_NONE == g_boot_shared_mem.boot_reason )
     {
@@ -678,9 +682,51 @@ boot_state_t boot_get_state(void)
     return state;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Get shared memory layout version
+*
+* @note     Function return "eBOOT_ERROR_CRC" in case of shared memory
+*           data corruption!
+*
+* @param[out]   p_version   - Shared memory layout version
+* @return       status      - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
+boot_status_t boot_shared_mem_get_version(uint8_t * const p_version)
+{
+    boot_status_t status = eBOOT_OK;
 
+    BOOT_ASSERT( NULL != p_version );
 
+    if ( NULL != p_version )
+    {
+        // Validate shared memory
+        if ( g_boot_shared_mem.crc == boot_shared_mem_calc_crc((const boot_shared_mem_t *) &g_boot_shared_mem ))
+        {
+            *p_version = g_boot_shared_mem.ver;
+        }
+        else
+        {
+            status = eBOOT_ERROR_CRC;
+        }
+    }
+    else
+    {
+        status = eBOOT_ERROR;
+    }
 
+    return status;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*      Set boot reason
+*
+* @param[in]    reason    - Boot reason
+* @return       status    - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
 boot_status_t boot_shared_mem_set_boot_reason(const boot_reason_t reason)
 {
     boot_status_t status = eBOOT_OK;
@@ -694,7 +740,17 @@ boot_status_t boot_shared_mem_set_boot_reason(const boot_reason_t reason)
     return status;
 }
 
-
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Get booting reason
+*
+* @note     Function return "eBOOT_ERROR_CRC" in case of shared memory
+*           data corruption!
+*
+* @param[out]   p_reason    - Boot reason
+* @return       status      - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
 boot_status_t boot_shared_mem_get_boot_reason(boot_reason_t * const p_reason)
 {
     boot_status_t status = eBOOT_OK;
@@ -710,7 +766,7 @@ boot_status_t boot_shared_mem_get_boot_reason(boot_reason_t * const p_reason)
         }
         else
         {
-            status = eBOOT_ERROR;
+            status = eBOOT_ERROR_CRC;
         }
     }
     else
@@ -721,7 +777,14 @@ boot_status_t boot_shared_mem_get_boot_reason(boot_reason_t * const p_reason)
     return status;
 }
 
-
+////////////////////////////////////////////////////////////////////////////////
+/**
+*      Set boot counts
+*
+* @param[in]    reason    - Boot reason
+* @return       status    - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
 boot_status_t boot_shared_mem_set_boot_cnt(const uint8_t cnt)
 {
     boot_status_t status = eBOOT_OK;
@@ -735,7 +798,20 @@ boot_status_t boot_shared_mem_set_boot_cnt(const uint8_t cnt)
     return status;
 }
 
-
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Get number of boots
+*
+* @brief    Boot counts is used as a safety mechanism to prevent jumping to
+*           malfunctioned application.
+*
+* @note     Function return "eBOOT_ERROR_CRC" in case of shared memory
+*           data corruption!
+*
+* @param[out]   p_cnt    - Boot counts
+* @return       status   - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
 boot_status_t boot_shared_mem_get_boot_cnt(uint8_t * const p_cnt)
 {
     boot_status_t status = eBOOT_OK;
@@ -751,7 +827,7 @@ boot_status_t boot_shared_mem_get_boot_cnt(uint8_t * const p_cnt)
         }
         else
         {
-            status = eBOOT_ERROR;
+            status = eBOOT_ERROR_CRC;
         }
     }
     else
@@ -761,7 +837,6 @@ boot_status_t boot_shared_mem_get_boot_cnt(uint8_t * const p_cnt)
 
     return status;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
