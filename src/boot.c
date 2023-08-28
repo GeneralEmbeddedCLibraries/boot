@@ -192,34 +192,13 @@ static boot_status_t boot_app_head_read(ver_app_header_t * const p_head)
 ////////////////////////////////////////////////////////////////////////////////
 static uint8_t boot_app_head_calc_crc(const ver_app_header_t * const p_head)
 {
-    //const   uint8_t         poly    = 0x07U;    // CRC-8-CCITT
-    //const   uint8_t         seed    = 0xB6U;    // Custom seed
             uint8_t         crc8    = 0;
     const   uint8_t * const p_data  = (uint8_t*) p_head;
 
-#if 0
-    // NOTE: Ignore last CRC field (BOOT_CFG_APP_HEAD_SIZE - 1U)
-    for (uint32_t i = 0; i < ( BOOT_CFG_APP_HEAD_SIZE - 1U ); i++)
-    {
-        crc8 = (( crc8 ^ p_data[i] ) & 0xFFU );
-
-        for (uint8_t j = 0U; j < 8U; j++)
-        {
-            if ( crc8 & 0x80U )
-            {
-                crc8 = (( crc8 << 1U ) ^ poly );
-            }
-            else
-            {
-                crc8 = ( crc8 << 1U );
-            }
-        }
-    }
-#endif
-
+    // Calculate CRC
     crc8 = boot_calc_crc( p_data,  BOOT_CFG_APP_HEAD_SIZE - 1U );
 
-    return ( crc8 & 0xFFU );
+    return crc8;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
