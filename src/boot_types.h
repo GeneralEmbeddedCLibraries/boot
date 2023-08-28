@@ -87,7 +87,9 @@ typedef enum
 } boot_reason_t;
 
 /**
- *  Shared memory layout
+ *      Shared memory layout
+ *
+ *  @note   Layout version V1!
  */
 typedef struct
 {

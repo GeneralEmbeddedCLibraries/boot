@@ -57,6 +57,10 @@ BOOT_CFG_STATIC_ASSERT( sizeof(boot_shared_mem_t) == 32U );
  */
 #define BOOT_APP_START_ADDR				( BOOT_CFG_APP_HEAD_ADDR + BOOT_CFG_APP_HEAD_SIZE )
 
+/**
+ *      Shared memory layout version
+ */
+#define BOOT_SHARED_MEM_VER             ( 1 )
 
 /**
  *  Reset vector function pointer
@@ -114,12 +118,14 @@ static volatile boot_shared_mem_t __BOOT_CFG_SHARED_MEM__ g_boot_shared_mem;
 ////////////////////////////////////////////////////////////////////////////////
 // Function prototypes
 ////////////////////////////////////////////////////////////////////////////////
-static uint8_t          boot_calc_crc           (const uint8_t * const p_data, const uint16_t size);
-static boot_status_t    boot_app_head_read      (ver_app_header_t * const p_head);
-static uint8_t          boot_app_head_calc_crc  (const ver_app_header_t * const p_head);
-static uint32_t         boot_fw_image_calc_crc  (const uint32_t size);
-static boot_status_t	boot_fw_image_validate	(void);
-static boot_status_t 	boot_start_application	(void);
+static uint8_t          boot_calc_crc               (const uint8_t * const p_data, const uint16_t size);
+static boot_status_t    boot_app_head_read          (ver_app_header_t * const p_head);
+static uint8_t          boot_app_head_calc_crc      (const ver_app_header_t * const p_head);
+static uint32_t         boot_fw_image_calc_crc      (const uint32_t size);
+static boot_status_t	boot_fw_image_validate	    (void);
+static boot_status_t 	boot_start_application	    (void);
+static boot_status_t    boot_shared_mem_calc_crc    (const boot_shared_mem_t * const p_mem);
+static void             boot_init_shared_mem        (void);
 
 
 #if ( 1 == BOOT_CFG_DEBUG_EN )
@@ -338,6 +344,57 @@ static boot_status_t boot_start_application(void)
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
+*       Calculate shared memory CRC
+*
+* @param[in]    p_mem   - Pointer to shared memory
+* @return       status  - Status of validation
+*/
+////////////////////////////////////////////////////////////////////////////////
+static boot_status_t boot_shared_mem_calc_crc(const boot_shared_mem_t * const p_mem)
+{
+    uint8_t crc8 = 0U;
+
+    // Calculate crc
+    // NOTE: Ignore CRC value at the end (-1)
+    crc8 = boot_calc_crc((uint8_t*) p_mem, ( sizeof(boot_shared_mem_t) - 1U ));
+
+    return crc8;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Initialize shared memory
+*
+* @note     In case of CRC failure -> all fields are set to default!
+*
+* @return       void
+*/
+////////////////////////////////////////////////////////////////////////////////
+static void boot_init_shared_mem(void)
+{
+    // Shared memory CRC OK
+    if ( boot_shared_mem_calc_crc((const boot_shared_mem_t *) &g_boot_shared_mem ) == g_boot_shared_mem.crc )
+    {
+        // Count boot ups
+        g_boot_shared_mem.boot_cnt++;
+    }
+
+    // CRC error
+    else
+    {
+        g_boot_shared_mem.boot_cnt      = 0U;
+        g_boot_shared_mem.boot_reason   = eBOOT_REASON_NONE;
+    }
+
+    // Set shared mem version
+    g_boot_shared_mem.ver = BOOT_SHARED_MEM_VER;
+
+    // Calculate CRC
+    g_boot_shared_mem.crc = boot_shared_mem_calc_crc((const boot_shared_mem_t *) &g_boot_shared_mem );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
 *       Connect Bootloader Message Reception Callback
 *
 * @return       void
@@ -540,7 +597,16 @@ void boot_com_info_rsp_msg_rcv_cb(const uint32_t boot_ver, const boot_msg_status
 */
 ////////////////////////////////////////////////////////////////////////////////
 
-
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Initialize bootloader
+*
+* @note     Shall be used only by bootloader code!
+*           Do not call this function from application code!
+*
+* @return       status - Status of initialization
+*/
+////////////////////////////////////////////////////////////////////////////////
 boot_status_t boot_init(void)
 {
     boot_status_t status = eBOOT_OK;
@@ -548,14 +614,35 @@ boot_status_t boot_init(void)
     // Initialize bootloader interfaces
     status |= boot_if_init();
 
+    // Set shared memory version
+    boot_init_shared_mem();
 
-    if ( eBOOT_OK == boot_fw_image_validate())
+
+    // No reason to stay in bootloader
+    if ( eBOOT_REASON_NONE == g_boot_shared_mem.boot_reason )
     {
-    	// Jump to application
-    	if ( 1 )
-    	{
-    		boot_start_application();
-    	}
+        // Enter exit state...
+        // TODO:
+
+
+        // TODO: Testing only.... SHALL BE REMOVED IN FUTURE!
+        if ( eBOOT_OK == boot_fw_image_validate())
+        {
+            // Jump to application
+            if ( 1 )
+            {
+                boot_start_application();
+            }
+        }
+    }
+
+    // There is some reason to stay in bootloader
+    else
+    {
+        // TODO: Check what that reason is and act accordingly!
+
+
+        BOOT_DBG_PRINT( "Staying in bootloader as there was reason <%d> for that...", g_boot_shared_mem.boot_reason );
     }
 
 
@@ -592,23 +679,14 @@ boot_state_t boot_get_state(void)
 }
 
 
-static boot_status_t boot_shared_mem_calc_crc(const boot_shared_mem_t * const p_mem)
-{
-    uint8_t crc8 = 0U;
 
-    // Calculate crc
-    // NOTE: Ignore CRC value at the end (-1)
-    crc8 = boot_calc_crc((uint8_t*) p_mem, ( sizeof(boot_shared_mem_t) - 1U ));
-
-    return crc8;
-}
 
 boot_status_t boot_shared_mem_set_boot_reason(const boot_reason_t reason)
 {
     boot_status_t status = eBOOT_OK;
 
-    // Unused
-    (void) reason;
+    // Set reason
+    g_boot_shared_mem.boot_reason = reason;
 
     // Calculate CRC
     g_boot_shared_mem.crc = boot_shared_mem_calc_crc((const boot_shared_mem_t *) &g_boot_shared_mem );
@@ -621,8 +699,24 @@ boot_status_t boot_shared_mem_get_boot_reason(boot_reason_t * const p_reason)
 {
     boot_status_t status = eBOOT_OK;
 
-    // Unused
-    (void) p_reason;
+    BOOT_ASSERT( NULL != p_reason );
+
+    if ( NULL != p_reason )
+    {
+        // Validate shared memory
+        if ( g_boot_shared_mem.crc == boot_shared_mem_calc_crc((const boot_shared_mem_t *) &g_boot_shared_mem ))
+        {
+            *p_reason = g_boot_shared_mem.boot_reason;
+        }
+        else
+        {
+            status = eBOOT_ERROR;
+        }
+    }
+    else
+    {
+        status = eBOOT_ERROR;
+    }
 
     return status;
 }
@@ -632,8 +726,11 @@ boot_status_t boot_shared_mem_set_boot_cnt(const uint8_t cnt)
 {
     boot_status_t status = eBOOT_OK;
 
-    // Unused
-    (void) cnt;
+    // Set counts
+    g_boot_shared_mem.boot_cnt = cnt;
+
+    // Calculate CRC
+    g_boot_shared_mem.crc = boot_shared_mem_calc_crc((const boot_shared_mem_t *) &g_boot_shared_mem );
 
     return status;
 }
@@ -643,8 +740,24 @@ boot_status_t boot_shared_mem_get_boot_cnt(uint8_t * const p_cnt)
 {
     boot_status_t status = eBOOT_OK;
 
-    // Unused
-    (void) p_cnt;
+    BOOT_ASSERT( NULL != p_cnt );
+
+    if ( NULL != p_cnt )
+    {
+        // Validate shared memory
+        if ( g_boot_shared_mem.crc == boot_shared_mem_calc_crc((const boot_shared_mem_t *) &g_boot_shared_mem ))
+        {
+            *p_cnt = g_boot_shared_mem.boot_cnt;
+        }
+        else
+        {
+            status = eBOOT_ERROR;
+        }
+    }
+    else
+    {
+        status = eBOOT_ERROR;
+    }
 
     return status;
 }
