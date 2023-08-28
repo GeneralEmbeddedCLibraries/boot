@@ -32,11 +32,16 @@
 
 // USER INCLUDE BEGIN...
 
-// Communication
-#include "drivers/peripheral/uart/uart/src/uart.h"
+// HAL
+#include "stm32g4xx_hal.h"
 
-// Internal MCU flash
+// Drivers
+#include "drivers/peripheral/gpio/gpio/src/gpio.h"
+#include "drivers/peripheral/uart/uart/src/uart.h"
 #include "drivers/peripheral/flash/flash/src/flash.h"
+
+// Middleware
+#include "middleware/cli/cli/src/cli.h"
 
 // USER INCLUDE END...
 
@@ -268,6 +273,39 @@ boot_status_t boot_if_flash_erase(const uint32_t addr, const uint32_t size)
     {
         status = eBOOT_ERROR;
     }
+
+    // USER CODE END...
+
+    return status;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       De-initialize all used periphery
+*
+* @return       status - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
+boot_status_t boot_if_deinit(void)
+{
+    boot_status_t status = eBOOT_OK;
+
+    // USER CODE BEGIN...
+
+	// De-init gpio
+	gpio_deinit();
+
+	// Cli de-init
+	cli_deinit();
+
+	// De-init clocks
+	HAL_RCC_DeInit();
+
+	// De-init HAL
+	HAL_DeInit();
+
+	// Disable systick
+	SysTick->CTRL &= ~SysTick_CTRL_ENABLE_Msk;
 
     // USER CODE END...
 
