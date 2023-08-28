@@ -192,11 +192,11 @@ static boot_status_t boot_app_head_read(ver_app_header_t * const p_head)
 ////////////////////////////////////////////////////////////////////////////////
 static uint8_t boot_app_head_calc_crc(const ver_app_header_t * const p_head)
 {
-            uint8_t         crc8    = 0;
-    const   uint8_t * const p_data  = (uint8_t*) p_head;
+    uint8_t crc8 = 0U;
 
     // Calculate CRC
-    crc8 = boot_calc_crc( p_data,  BOOT_CFG_APP_HEAD_SIZE - 1U );
+    // NOTE: Ignore CRC value at the end (-1)
+    crc8 = boot_calc_crc((uint8_t*) p_head, ( BOOT_CFG_APP_HEAD_SIZE - 1U ));
 
     return crc8;
 }
@@ -592,12 +592,26 @@ boot_state_t boot_get_state(void)
 }
 
 
+static boot_status_t boot_shared_mem_calc_crc(const boot_shared_mem_t * const p_mem)
+{
+    uint8_t crc8 = 0U;
+
+    // Calculate crc
+    // NOTE: Ignore CRC value at the end (-1)
+    crc8 = boot_calc_crc((uint8_t*) p_mem, ( sizeof(boot_shared_mem_t) - 1U ));
+
+    return crc8;
+}
+
 boot_status_t boot_shared_mem_set_boot_reason(const boot_reason_t reason)
 {
     boot_status_t status = eBOOT_OK;
 
     // Unused
     (void) reason;
+
+    // Calculate CRC
+    g_boot_shared_mem.crc = boot_shared_mem_calc_crc((const boot_shared_mem_t *) &g_boot_shared_mem );
 
     return status;
 }
