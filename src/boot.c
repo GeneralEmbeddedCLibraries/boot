@@ -531,6 +531,12 @@ static boot_msg_status_t boot_fw_size_check(const uint32_t fw_size)
 
     #if ( 1 == BOOT_CFG_FW_SIZE_CHECK_EN )
 
+        // New application image to big!
+        if ( fw_size > BOOT_CFG_APP_SIZE )
+        {
+            status = eBOOT_MSG_ERROR_FW_SIZE;
+        }
+
     #else
         // Unused
         (void) fw_size;
@@ -544,6 +550,16 @@ static boot_msg_status_t boot_fw_ver_check(const uint32_t fw_ver)
     boot_msg_status_t status = eBOOT_MSG_OK;
 
     #if ( 1 == BOOT_CFG_FW_VER_CHECK_EN )
+
+        // Assemble limit FW version (compatible up to that version/limit value)
+        const uint32_t fw_ver_lim = (uint32_t) ((( BOOT_CFG_FW_VER_MAJOR & 0xFFU ) << 24U )    | (( BOOT_CFG_FW_VER_MINOR & 0xFFU ) << 16U )
+                                            |   (( BOOT_CFG_FW_VER_DEVELOP & 0xFFU ) << 8U )   | ( BOOT_CFG_FW_VER_TEST & 0xFFU ));
+
+        // New application firmware version not supported!
+        if ( fw_ver > fw_ver_lim )
+        {
+            status = eBOOT_MSG_ERROR_FW_VER;
+        }
 
     #else
         // Unused
@@ -559,6 +575,16 @@ static boot_msg_status_t boot_hw_ver_check(const uint32_t hw_ver)
 
     #if ( 1 == BOOT_CFG_HW_VER_CHECK_EN )
 
+        // Assemble limit HW version (compatible up to that version/limit value)
+        const uint32_t hw_ver_lim = (uint32_t) ((( BOOT_CFG_HW_VER_MAJOR & 0xFFU ) << 24U )    | (( BOOT_CFG_HW_VER_MINOR & 0xFFU ) << 16U )
+                                            |   (( BOOT_CFG_HW_VER_DEVELOP & 0xFFU ) << 8U )   | ( BOOT_CFG_HW_VER_TEST & 0xFFU ));
+
+        // New application firmware version not supported!
+        if ( hw_ver > hw_ver_lim )
+        {
+            status = eBOOT_MSG_ERROR_HW_VER;
+        }
+
     #else
         // Unused
         (void) hw_ver;
@@ -569,11 +595,11 @@ static boot_msg_status_t boot_hw_ver_check(const uint32_t hw_ver)
 
 void boot_com_prepare_msg_rcv_cb(const uint32_t fw_size, const uint32_t fw_ver, const uint32_t hw_ver)
 {
+    boot_msg_status_t msg_status = eBOOT_MSG_OK;
+
     // In PREPARE state
     if ( eBOOT_STATE_PREPARE == boot_get_state())
     {
-        boot_msg_status_t msg_status = eBOOT_MSG_OK;
-
         // Check for FW size
         msg_status |= boot_fw_size_check( fw_size );
 
@@ -583,7 +609,7 @@ void boot_com_prepare_msg_rcv_cb(const uint32_t fw_size, const uint32_t fw_ver, 
         // Check for HW version compatibility
         msg_status |= boot_hw_ver_check( hw_ver );
 
-        // Everythink OK
+        // Everything OK
         if ( eBOOT_MSG_OK == msg_status )
         {
             // Erase application region flash
@@ -591,28 +617,29 @@ void boot_com_prepare_msg_rcv_cb(const uint32_t fw_size, const uint32_t fw_ver, 
             {
                 msg_status = eBOOT_MSG_ERROR_FLASH_ERASE;
             }
-
-            // Preparing finished with success
-            else
-            {
-                // Enter FLASH state
-                fsm_goto_state( g_boot_fsm, eBOOT_STATE_FLASH );
-            }
         }
-
-        // Send prepare msg response
-        boot_com_send_prepare_rsp( eBOOT_MSG_OK );
     }
 
     // Not in PREPARE state
     else
     {
-        // Enter IDLE state -> cancel boot operation
-        fsm_goto_state( g_boot_fsm, eBOOT_STATE_IDLE );
-
-        // Return "Invalid Request" message
-        boot_com_send_connect_rsp( eBOOT_MSG_ERROR_INVALID_REQ );
+        msg_status = eBOOT_MSG_ERROR_INVALID_REQ;
     }
+
+    // Enter FLASH state if every operation is OK
+    if ( eBOOT_MSG_OK == msg_status )
+    {
+        fsm_goto_state( g_boot_fsm, eBOOT_STATE_FLASH );
+    }
+
+    // Some problems during prepare operation -> enter IDLE state and wait for next command from Boot Manager
+    else
+    {
+        fsm_goto_state( g_boot_fsm, eBOOT_STATE_IDLE );
+    }
+
+    // Send prepare msg response
+    boot_com_send_prepare_rsp( msg_status );
 }
 
 ////////////////////////////////////////////////////////////////////////////////
