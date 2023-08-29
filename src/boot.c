@@ -544,17 +544,17 @@ static void boot_fsm_idle_hndl(void)
 
 static void boot_fsm_prepare_hndl(void)
 {
-
+    // TODO: Implement timeout...
 }
 
 static void boot_fsm_flash_hndl(void)
 {
-
+    // TODO: Implement timeout...
 }
 
 static void boot_fsm_exit_hndl(void)
 {
-
+    // TODO: Implement timeout...
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -566,6 +566,8 @@ static void boot_fsm_exit_hndl(void)
 ////////////////////////////////////////////////////////////////////////////////
 void boot_com_connect_msg_rcv_cb(void)
 {
+    boot_msg_status_t msg_status = eBOOT_MSG_OK;
+
     // In IDLE state
     if ( eBOOT_STATE_IDLE == boot_get_state())
     {
@@ -574,9 +576,6 @@ void boot_com_connect_msg_rcv_cb(void)
 
         // Enter PREPARE state
         fsm_goto_state( g_boot_fsm, eBOOT_STATE_PREPARE );
-
-        // Return "OK" message
-        boot_com_send_connect_rsp( eBOOT_MSG_OK );
     }
 
     // Not in IDLE state
@@ -586,8 +585,11 @@ void boot_com_connect_msg_rcv_cb(void)
         fsm_goto_state( g_boot_fsm, eBOOT_STATE_IDLE );
 
         // Return "Invalid Request" message
-        boot_com_send_connect_rsp( eBOOT_MSG_ERROR_INVALID_REQ );
+        msg_status = eBOOT_MSG_ERROR_INVALID_REQ;
     }
+
+    // Send connect msg response
+    boot_com_send_connect_rsp( msg_status );
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -752,8 +754,8 @@ void boot_com_flash_msg_rcv_cb(const uint8_t * const p_data, const uint16_t size
         fsm_goto_state( g_boot_fsm, eBOOT_STATE_IDLE );
     }
 
-    // Send prepare msg response
-    boot_com_send_prepare_rsp( msg_status );
+    // Send flash msg response
+    boot_com_send_flash_rsp( msg_status );
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -816,8 +818,8 @@ void boot_com_exit_msg_rcv_cb(void)
         fsm_goto_state( g_boot_fsm, eBOOT_STATE_IDLE );
     }
 
-    // Send prepare msg response
-    boot_com_send_prepare_rsp( msg_status );
+    // Send exit msg response
+    boot_com_send_exit_rsp( msg_status );
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -846,9 +848,22 @@ void boot_com_exit_rsp_msg_rcv_cb(const boot_msg_status_t msg_status)
 ////////////////////////////////////////////////////////////////////////////////
 void boot_com_info_msg_rcv_cb(void)
 {
+    boot_msg_status_t msg_status = eBOOT_MSG_OK;
 
+    // In IDLE state
+    if ( eBOOT_STATE_IDLE == boot_get_state())
+    {
 
-    BOOT_DBG_PRINT( "Info Bootloader Message Reception Callback..." );
+    }
+
+    // Not in IDLE state
+    else
+    {
+        msg_status = eBOOT_MSG_ERROR_INVALID_REQ;
+    }
+
+    // Send info msg response
+    boot_com_send_prepare_rsp( msg_status );
 }
 
 ////////////////////////////////////////////////////////////////////////////////
