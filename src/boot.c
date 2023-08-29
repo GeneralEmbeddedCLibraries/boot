@@ -94,15 +94,18 @@ typedef void (*p_func)(void);
 ////////////////////////////////////////////////////////////////////////////////
 // Function prototypes
 ////////////////////////////////////////////////////////////////////////////////
-static uint8_t          boot_calc_crc               (const uint8_t * const p_data, const uint16_t size);
-static boot_status_t    boot_app_head_read          (ver_app_header_t * const p_head);
-static uint8_t          boot_app_head_calc_crc      (const ver_app_header_t * const p_head);
-static uint32_t         boot_fw_image_calc_crc      (const uint32_t size);
-static boot_status_t    boot_fw_image_validate      (void);
-static boot_status_t    boot_start_application      (void);
-static boot_status_t    boot_shared_mem_calc_crc    (const boot_shared_mem_t * const p_mem);
-static void             boot_init_shared_mem        (void);
-static void             boot_wait                   (const uint32_t ms);
+static uint8_t              boot_calc_crc               (const uint8_t * const p_data, const uint16_t size);
+static boot_status_t        boot_app_head_read          (ver_app_header_t * const p_head);
+static uint8_t              boot_app_head_calc_crc      (const ver_app_header_t * const p_head);
+static uint32_t             boot_fw_image_calc_crc      (const uint32_t size);
+static boot_status_t        boot_fw_image_validate      (void);
+static boot_status_t        boot_start_application      (void);
+static boot_status_t        boot_shared_mem_calc_crc    (const boot_shared_mem_t * const p_mem);
+static void                 boot_init_shared_mem        (void);
+static void                 boot_wait                   (const uint32_t ms);
+static boot_msg_status_t    boot_fw_size_check          (const uint32_t fw_size);
+static boot_msg_status_t    boot_fw_ver_check           (const uint32_t fw_ver);
+static boot_msg_status_t    boot_hw_ver_check           (const uint32_t hw_ver);
 
 // FSM state handlers
 static void boot_fsm_idle_hndl      (void);
@@ -411,7 +414,7 @@ static void boot_init_shared_mem(void)
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
-*       Wait (delay)
+*       Wait (delay) and handle bootloader in between
 *
 * @param[in]    ms  - Time to wait in miliseconds
 * @return       void
@@ -438,6 +441,98 @@ static void boot_wait(const uint32_t ms)
             }
         }
     }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Check for new application image size
+*
+* @param[in]    fw_size     - New application image size in bytes
+* @return       status      - Status of check
+*/
+////////////////////////////////////////////////////////////////////////////////
+static boot_msg_status_t boot_fw_size_check(const uint32_t fw_size)
+{
+    boot_msg_status_t status = eBOOT_MSG_OK;
+
+    #if ( 1 == BOOT_CFG_FW_SIZE_CHECK_EN )
+
+        // New application image to big!
+        if ( fw_size > BOOT_CFG_APP_SIZE )
+        {
+            status = eBOOT_MSG_ERROR_FW_SIZE;
+        }
+
+    #else
+        // Unused
+        (void) fw_size;
+    #endif
+
+    return status;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Check for new application SW version compatibility
+*
+* @param[in]    fw_ver  - New application FW version in form of uint32_t: 0xMAJOR.MINOR.DEVELOP.TEST
+* @return       status  - Status of check
+*/
+////////////////////////////////////////////////////////////////////////////////
+static boot_msg_status_t boot_fw_ver_check(const uint32_t fw_ver)
+{
+    boot_msg_status_t status = eBOOT_MSG_OK;
+
+    #if ( 1 == BOOT_CFG_FW_VER_CHECK_EN )
+
+        // Assemble limit FW version (compatible up to that version/limit value)
+        const uint32_t fw_ver_lim = (uint32_t) ((( BOOT_CFG_FW_VER_MAJOR & 0xFFU ) << 24U )    | (( BOOT_CFG_FW_VER_MINOR & 0xFFU ) << 16U )
+                                            |   (( BOOT_CFG_FW_VER_DEVELOP & 0xFFU ) << 8U )   | ( BOOT_CFG_FW_VER_TEST & 0xFFU ));
+
+        // New application firmware version not supported!
+        if ( fw_ver > fw_ver_lim )
+        {
+            status = eBOOT_MSG_ERROR_FW_VER;
+        }
+
+    #else
+        // Unused
+        (void) fw_ver;
+    #endif
+
+    return status;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Check for new application HW version compatibility
+*
+* @param[in]    hw_ver  - New application HW version in form of uint32_t: 0xMAJOR.MINOR.DEVELOP.TEST
+* @return       status  - Status of check
+*/
+////////////////////////////////////////////////////////////////////////////////
+static boot_msg_status_t boot_hw_ver_check(const uint32_t hw_ver)
+{
+    boot_msg_status_t status = eBOOT_MSG_OK;
+
+    #if ( 1 == BOOT_CFG_HW_VER_CHECK_EN )
+
+        // Assemble limit HW version (compatible up to that version/limit value)
+        const uint32_t hw_ver_lim = (uint32_t) ((( BOOT_CFG_HW_VER_MAJOR & 0xFFU ) << 24U )    | (( BOOT_CFG_HW_VER_MINOR & 0xFFU ) << 16U )
+                                            |   (( BOOT_CFG_HW_VER_DEVELOP & 0xFFU ) << 8U )   | ( BOOT_CFG_HW_VER_TEST & 0xFFU ));
+
+        // New application firmware version not supported!
+        if ( hw_ver > hw_ver_lim )
+        {
+            status = eBOOT_MSG_ERROR_HW_VER;
+        }
+
+    #else
+        // Unused
+        (void) hw_ver;
+    #endif
+
+    return status;
 }
 
 static void boot_fsm_idle_hndl(void)
@@ -520,79 +615,6 @@ void boot_com_connect_rsp_msg_rcv_cb(const boot_msg_status_t msg_status)
 * @return       void
 */
 ////////////////////////////////////////////////////////////////////////////////
-
-static boot_msg_status_t boot_fw_size_check (const uint32_t fw_size);
-static boot_msg_status_t boot_fw_ver_check  (const uint32_t fw_ver);
-static boot_msg_status_t boot_hw_ver_check  (const uint32_t hw_ver);
-
-static boot_msg_status_t boot_fw_size_check(const uint32_t fw_size)
-{
-    boot_msg_status_t status = eBOOT_MSG_OK;
-
-    #if ( 1 == BOOT_CFG_FW_SIZE_CHECK_EN )
-
-        // New application image to big!
-        if ( fw_size > BOOT_CFG_APP_SIZE )
-        {
-            status = eBOOT_MSG_ERROR_FW_SIZE;
-        }
-
-    #else
-        // Unused
-        (void) fw_size;
-    #endif
-
-    return status;
-}
-
-static boot_msg_status_t boot_fw_ver_check(const uint32_t fw_ver)
-{
-    boot_msg_status_t status = eBOOT_MSG_OK;
-
-    #if ( 1 == BOOT_CFG_FW_VER_CHECK_EN )
-
-        // Assemble limit FW version (compatible up to that version/limit value)
-        const uint32_t fw_ver_lim = (uint32_t) ((( BOOT_CFG_FW_VER_MAJOR & 0xFFU ) << 24U )    | (( BOOT_CFG_FW_VER_MINOR & 0xFFU ) << 16U )
-                                            |   (( BOOT_CFG_FW_VER_DEVELOP & 0xFFU ) << 8U )   | ( BOOT_CFG_FW_VER_TEST & 0xFFU ));
-
-        // New application firmware version not supported!
-        if ( fw_ver > fw_ver_lim )
-        {
-            status = eBOOT_MSG_ERROR_FW_VER;
-        }
-
-    #else
-        // Unused
-        (void) fw_ver;
-    #endif
-
-    return status;
-}
-
-static boot_msg_status_t boot_hw_ver_check(const uint32_t hw_ver)
-{
-    boot_msg_status_t status = eBOOT_MSG_OK;
-
-    #if ( 1 == BOOT_CFG_HW_VER_CHECK_EN )
-
-        // Assemble limit HW version (compatible up to that version/limit value)
-        const uint32_t hw_ver_lim = (uint32_t) ((( BOOT_CFG_HW_VER_MAJOR & 0xFFU ) << 24U )    | (( BOOT_CFG_HW_VER_MINOR & 0xFFU ) << 16U )
-                                            |   (( BOOT_CFG_HW_VER_DEVELOP & 0xFFU ) << 8U )   | ( BOOT_CFG_HW_VER_TEST & 0xFFU ));
-
-        // New application firmware version not supported!
-        if ( hw_ver > hw_ver_lim )
-        {
-            status = eBOOT_MSG_ERROR_HW_VER;
-        }
-
-    #else
-        // Unused
-        (void) hw_ver;
-    #endif
-
-    return status;
-}
-
 void boot_com_prepare_msg_rcv_cb(const uint32_t fw_size, const uint32_t fw_ver, const uint32_t hw_ver)
 {
     boot_msg_status_t msg_status = eBOOT_MSG_OK;
