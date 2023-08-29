@@ -48,19 +48,36 @@
 // USER CODE BEGIN...
 
 /**
+ *      Application header address in flash
+ */
+#define BOOT_CFG_APP_HEAD_ADDR                  ( 0x08008000 )
+
+/**
+ *      Application header size
+ *
+ *  Unit: byte
+ */
+#define BOOT_CFG_APP_HEAD_SIZE                  ( 0x100 )
+
+/**
+ *      Complete application size
+ *
+ *  Unit: byte
+ */
+#define BOOT_CFG_APP_SIZE                       (( 512U - 32U ) * 1024U )
+
+/**
  *      Enable/Disable new firmware size check
+ *
+ * @note    At prepare command bootloader will check if new firmware app
+ *          can be fitted into "BOOT_CFG_APP_SIZE" space!
  */
-#define BOOT_CFG_FW_SIZE_CHECK_EN               ( 1 )
+#define BOOT_CFG_FW_SIZE_CHECK_EN              ( 1 )
 
 /**
  *      Enable/Disable new firmware version compatibility check
  */
-#define BOOT_CFG_FW_VER_CHECK_EN               ( 0 )
-
-/**
- *      Enable/Disable new firmware version compatibility check
- */
-#define BOOT_CFG_HW_VER_CHECK_EN               ( 0 )
+#define BOOT_CFG_FW_VER_CHECK_EN               ( 1 )
 
 /**
  *      New firmware compatibility value
@@ -74,6 +91,11 @@
     #define BOOT_CFG_FW_VER_DEVELOP             ( 0 )
     #define BOOT_CFG_FW_VER_TEST                ( 0 )
 #endif
+
+/**
+ *      Enable/Disable new firmware version compatibility check
+ */
+#define BOOT_CFG_HW_VER_CHECK_EN               ( 1 )
 
 /**
  *      New firmware hardware compatibility value
@@ -108,16 +130,16 @@
 #endif
 
 /**
- *      Application header address in flash
- */
-#define BOOT_CFG_APP_HEAD_ADDR                  ( 0x08008000 )
-
-/**
- *      Application header size
+ *      Bootloader back-door entry timeout
  *
- *  Unit: byte
+ * @note    Wait specified amount of time before entering application
+ *          code at bootloader startup if application is validated OK.
+ *
+ *          To disable waiting set to timeout to 0.
+ *
+ *  Unit: ms
  */
-#define BOOT_CFG_APP_HEAD_SIZE                  ( 0x100 )
+#define BOOT_CFG_WAIT_AT_STARTUP_MS             ( 500U )
 
 /**
  *      Reception buffer size
