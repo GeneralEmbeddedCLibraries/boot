@@ -77,7 +77,6 @@ BOOT_CFG_STATIC_ASSERT( sizeof(boot_shared_mem_t) == 32U );
  */
 typedef void (*p_func)(void);
 
-
 #if ( 1 == BOOT_CFG_DEBUG_EN )
 
     /**
@@ -93,6 +92,26 @@ typedef void (*p_func)(void);
 
 
 ////////////////////////////////////////////////////////////////////////////////
+// Function prototypes
+////////////////////////////////////////////////////////////////////////////////
+static uint8_t          boot_calc_crc               (const uint8_t * const p_data, const uint16_t size);
+static boot_status_t    boot_app_head_read          (ver_app_header_t * const p_head);
+static uint8_t          boot_app_head_calc_crc      (const ver_app_header_t * const p_head);
+static uint32_t         boot_fw_image_calc_crc      (const uint32_t size);
+static boot_status_t    boot_fw_image_validate      (void);
+static boot_status_t    boot_start_application      (void);
+static boot_status_t    boot_shared_mem_calc_crc    (const boot_shared_mem_t * const p_mem);
+static void             boot_init_shared_mem        (void);
+static void             boot_wait                   (const uint32_t ms);
+
+// FSM state handlers
+static void boot_fsm_idle_hndl      (void);
+static void boot_fsm_prepare_hndl   (void);
+static void boot_fsm_flash_hndl     (void);
+static void boot_fsm_exit_hndl      (void);
+
+
+////////////////////////////////////////////////////////////////////////////////
 // Variables
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -102,50 +121,32 @@ typedef void (*p_func)(void);
 static volatile boot_shared_mem_t __BOOT_CFG_SHARED_MEM__ g_boot_shared_mem;
 
 /**
- *  Bootloader state
+ *  Bootloader FSM
  */
+static p_fsm_t g_boot_fsm = NULL;
 
-
-#if ( 1 == BOOT_CFG_DEBUG_EN )
-
+/**
+ *  Bootloader FSM State Configurations
+ */
+static const fsm_cfg_t g_boot_fsm_cfg_table =
+{
     /**
-     *  Message status descriptions
+     *      State functions
+     *
+     *  NOTE: Sequence matters!
      */
-    static const boot_msg_status_desc_t g_msg_status_desc[] =
+    .state =
     {
-        { .status = eBOOT_MSG_OK,                   .desc = "OK"                         	},
-        { .status = eBOOT_MSG_ERROR_VALIDATION,     .desc = "ERROR - VALIDATION"         	},
-        { .status = eBOOT_MSG_ERROR_INVALID_REQ,    .desc = "ERROR - INVALID REQUEST"    	},
-        { .status = eBOOT_MSG_ERROR_FLASH_WRITE,    .desc = "ERROR - WRITE TO FLASH"     	},
-        { .status = eBOOT_MSG_ERROR_FLASH_ERASE,    .desc = "ERROR - FLASH PREPARE (ERASE)"  },
-        { .status = eBOOT_MSG_ERROR_FW_SIZE,        .desc = "ERROR - FW SIZE"                },
-        { .status = eBOOT_MSG_ERROR_FW_VER,         .desc = "ERROR - FW VERSION"             },
-    };
+        [eBOOT_STATE_IDLE]    = { .func = boot_fsm_idle_hndl,     .name = "IDLE"      },
+        [eBOOT_STATE_PREPARE] = { .func = boot_fsm_prepare_hndl,  .name = "PREPARE"   },
+        [eBOOT_STATE_FLASH]   = { .func = boot_fsm_flash_hndl,    .name = "FLASH"     },
+        [eBOOT_STATE_EXIT]    = { .func = boot_fsm_exit_hndl,     .name = "EXIT"      },
+    },
+    .name   = "Boot FSM",
+    .num_of = eBOOT_STATE_NUM_OF,
+    .period = 10.0f // ms
+};
 
-    /**
-     *  Number of all message status descriptions
-     */
-    static const uint16_t gu16_msg_status_des_num_of = (uint16_t) ( sizeof( g_msg_status_desc ) / sizeof( boot_msg_status_desc_t ));
-
-#endif // ( 1 == BOOT_CFG_DEBUG_EN )
-
-
-////////////////////////////////////////////////////////////////////////////////
-// Function prototypes
-////////////////////////////////////////////////////////////////////////////////
-static uint8_t          boot_calc_crc               (const uint8_t * const p_data, const uint16_t size);
-static boot_status_t    boot_app_head_read          (ver_app_header_t * const p_head);
-static uint8_t          boot_app_head_calc_crc      (const ver_app_header_t * const p_head);
-static uint32_t         boot_fw_image_calc_crc      (const uint32_t size);
-static boot_status_t	boot_fw_image_validate	    (void);
-static boot_status_t 	boot_start_application	    (void);
-static boot_status_t    boot_shared_mem_calc_crc    (const boot_shared_mem_t * const p_mem);
-static void             boot_init_shared_mem        (void);
-static void             boot_wait                   (const uint32_t ms);
-
-#if ( 1 == BOOT_CFG_DEBUG_EN )
-    static const char * boot_get_msg_status_str(const boot_msg_status_t msg_status);
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 // Functions
@@ -418,17 +419,45 @@ static void boot_init_shared_mem(void)
 ////////////////////////////////////////////////////////////////////////////////
 static void boot_wait(const uint32_t ms)
 {
+    // Get current ticks
+    const   uint32_t now        = BOOT_GET_SYSTICK();
+            uint32_t cnt_10ms   = now;
+
     if ( ms > 0 )
     {
-        // Get current ticks
-        const uint32_t now = BOOT_GET_SYSTICK();
-
         // Wait
         while((uint32_t)( BOOT_GET_SYSTICK() - now ) <= ms )
         {
-            // No actions...
+            // Every 10ms during wait time
+            if ((uint32_t) ( BOOT_GET_SYSTICK() - cnt_10ms ) >= 10U )
+            {
+                cnt_10ms = BOOT_GET_SYSTICK();
+
+                // Handle bootloader tasks
+                boot_hndl();
+            }
         }
     }
+}
+
+static void boot_fsm_idle_hndl(void)
+{
+
+}
+
+static void boot_fsm_prepare_hndl(void)
+{
+
+}
+
+static void boot_fsm_flash_hndl(void)
+{
+
+}
+
+static void boot_fsm_exit_hndl(void)
+{
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -440,9 +469,28 @@ static void boot_wait(const uint32_t ms)
 ////////////////////////////////////////////////////////////////////////////////
 void boot_com_connect_msg_rcv_cb(void)
 {
+    // In IDLE state
+    if ( eBOOT_STATE_IDLE == boot_get_state())
+    {
+        // Stay in bootloader -> reason communication
+        boot_shared_mem_set_boot_reason( eBOOT_REASON_COM );
 
+        // Enter PREPARE state
+        fsm_goto_state( g_boot_fsm, eBOOT_STATE_PREPARE );
 
-    BOOT_DBG_PRINT( "Connect Bootloader Message Reception Callback..." );
+        // Return "OK" message
+        boot_com_send_connect_rsp( eBOOT_MSG_OK );
+    }
+
+    // Not in IDLE state
+    else
+    {
+        // Enter IDLE state -> cancel boot operation
+        fsm_goto_state( g_boot_fsm, eBOOT_STATE_IDLE );
+
+        // Return "Invalid Request" message
+        boot_com_send_connect_rsp( eBOOT_MSG_ERROR_INVALID_REQ );
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -455,10 +503,11 @@ void boot_com_connect_msg_rcv_cb(void)
 ////////////////////////////////////////////////////////////////////////////////
 void boot_com_connect_rsp_msg_rcv_cb(const boot_msg_status_t msg_status)
 {
+    // Unused
+    (void) msg_status;
 
-
-
-    BOOT_DBG_PRINT( "Connect Response Bootloader Message Reception Callback. Status: %s", boot_get_msg_status_str( msg_status ));
+    // No actions...
+    // TODO: Boot Manager implementation here...
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -471,14 +520,99 @@ void boot_com_connect_rsp_msg_rcv_cb(const boot_msg_status_t msg_status)
 * @return       void
 */
 ////////////////////////////////////////////////////////////////////////////////
+
+static boot_msg_status_t boot_fw_size_check (const uint32_t fw_size);
+static boot_msg_status_t boot_fw_ver_check  (const uint32_t fw_ver);
+static boot_msg_status_t boot_hw_ver_check  (const uint32_t hw_ver);
+
+static boot_msg_status_t boot_fw_size_check(const uint32_t fw_size)
+{
+    boot_msg_status_t status = eBOOT_MSG_OK;
+
+    #if ( 1 == BOOT_CFG_FW_SIZE_CHECK_EN )
+
+    #else
+        // Unused
+        (void) fw_size;
+    #endif
+
+    return status;
+}
+
+static boot_msg_status_t boot_fw_ver_check(const uint32_t fw_ver)
+{
+    boot_msg_status_t status = eBOOT_MSG_OK;
+
+    #if ( 1 == BOOT_CFG_FW_VER_CHECK_EN )
+
+    #else
+        // Unused
+        (void) fw_ver;
+    #endif
+
+    return status;
+}
+
+static boot_msg_status_t boot_hw_ver_check(const uint32_t hw_ver)
+{
+    boot_msg_status_t status = eBOOT_MSG_OK;
+
+    #if ( 1 == BOOT_CFG_HW_VER_CHECK_EN )
+
+    #else
+        // Unused
+        (void) hw_ver;
+    #endif
+
+    return status;
+}
+
 void boot_com_prepare_msg_rcv_cb(const uint32_t fw_size, const uint32_t fw_ver, const uint32_t hw_ver)
 {
+    // In PREPARE state
+    if ( eBOOT_STATE_PREPARE == boot_get_state())
+    {
+        boot_msg_status_t msg_status = eBOOT_MSG_OK;
 
+        // Check for FW size
+        msg_status |= boot_fw_size_check( fw_size );
 
-    BOOT_DBG_PRINT( "Prepare Bootloader Message Reception Callback..." );
-    BOOT_DBG_PRINT( "    - fw_size: %d bytes", fw_size );
-    BOOT_DBG_PRINT( "    - fw_ver:  0x%08X", fw_ver );
-    BOOT_DBG_PRINT( "    - hw_ver:  0x%08X", hw_ver );
+        // Check for FW version compatibility
+        msg_status |= boot_fw_ver_check( fw_ver );
+
+        // Check for HW version compatibility
+        msg_status |= boot_hw_ver_check( hw_ver );
+
+        // Everythink OK
+        if ( eBOOT_MSG_OK == msg_status )
+        {
+            // Erase application region flash
+            if ( eBOOT_OK != boot_if_flash_erase( BOOT_CFG_APP_HEAD_ADDR, BOOT_CFG_APP_SIZE ))
+            {
+                msg_status = eBOOT_MSG_ERROR_FLASH_ERASE;
+            }
+
+            // Preparing finished with success
+            else
+            {
+                // Enter FLASH state
+                fsm_goto_state( g_boot_fsm, eBOOT_STATE_FLASH );
+            }
+        }
+
+        // Send prepare msg response
+        boot_com_send_prepare_rsp( eBOOT_MSG_OK );
+    }
+
+    // Not in PREPARE state
+    else
+    {
+        // Enter IDLE state -> cancel boot operation
+        fsm_goto_state( g_boot_fsm, eBOOT_STATE_IDLE );
+
+        // Return "Invalid Request" message
+        boot_com_send_connect_rsp( eBOOT_MSG_ERROR_INVALID_REQ );
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -491,9 +625,11 @@ void boot_com_prepare_msg_rcv_cb(const uint32_t fw_size, const uint32_t fw_ver, 
 ////////////////////////////////////////////////////////////////////////////////
 void boot_com_prepare_rsp_msg_rcv_cb(const boot_msg_status_t msg_status)
 {
+    // Unused
+    (void) msg_status;
 
-
-    BOOT_DBG_PRINT( "Prepare Response Bootloader Message Reception Callback. Status: %s", boot_get_msg_status_str( msg_status ));
+    // No actions...
+    // TODO: Boot Manager implementation here...
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -525,9 +661,11 @@ void boot_com_flash_msg_rcv_cb(const uint8_t * const p_data, const uint16_t size
 ////////////////////////////////////////////////////////////////////////////////
 void boot_com_flash_rsp_msg_rcv_cb(const boot_msg_status_t msg_status)
 {
+    // Unused
+    (void) msg_status;
 
-
-    BOOT_DBG_PRINT( "Flash Response Bootloader Message Reception Callback. Status: %s", boot_get_msg_status_str( msg_status ));
+    // No actions...
+    // TODO: Boot Manager implementation here...
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -554,9 +692,11 @@ void boot_com_exit_msg_rcv_cb(void)
 ////////////////////////////////////////////////////////////////////////////////
 void boot_com_exit_rsp_msg_rcv_cb(const boot_msg_status_t msg_status)
 {
+    // Unused
+    (void) msg_status;
 
-
-    BOOT_DBG_PRINT( "Exit Response Bootloader Message Reception Callback. Status: %s", boot_get_msg_status_str( msg_status ));
+    // No actions...
+    // TODO: Boot Manager implementation here...
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -584,41 +724,14 @@ void boot_com_info_msg_rcv_cb(void)
 ////////////////////////////////////////////////////////////////////////////////
 void boot_com_info_rsp_msg_rcv_cb(const uint32_t boot_ver, const boot_msg_status_t msg_status)
 {
+    // Unused
+    (void) boot_ver;
+    (void) msg_status;
 
-
-    BOOT_DBG_PRINT( "Info Response Bootloader Message Reception Callback" );
-    BOOT_DBG_PRINT( "    - boot_ver: 0x%08X", boot_ver );
-    BOOT_DBG_PRINT( "    - Status:   %s", boot_get_msg_status_str( msg_status ));
+    // No actions...
+    // TODO: Boot Manager implementation here...
 }
 
-#if ( 1 == BOOT_CFG_DEBUG_EN )
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /**
-    *       Get command message status string
-    *
-    * @param[in]    cmd_type    - SCP command type
-    * @return       str         - SCP command type description
-    */
-    ////////////////////////////////////////////////////////////////////////////////
-    static const char * boot_get_msg_status_str(const boot_msg_status_t msg_status)
-    {
-        uint16_t i = 0;
-        const char * str = "N/A";
-
-        for ( i = 0; i < gu16_msg_status_des_num_of; i++ )
-        {
-            if ( msg_status == g_msg_status_desc[i].status )
-            {
-                str =  (const char*) g_msg_status_desc[i].desc;
-                break;
-            }
-        }
-
-        return str;
-    }
-
-#endif // ( 1 == BOOT_CFG_DEBUG_EN )
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -654,6 +767,12 @@ boot_status_t boot_init(void)
 
     // Set shared memory version
     boot_init_shared_mem();
+
+    // Init bootloader FSM
+    if ( eFSM_OK != fsm_init( &g_boot_fsm, &g_boot_fsm_cfg_table ))
+    {
+        status = eBOOT_ERROR;
+    }
 
     // Initialize bootloader interfaces
     status |= boot_if_init();
@@ -691,6 +810,8 @@ boot_status_t boot_init(void)
 /**
 *       Handle bootloader logic
 *
+* @note     This function shall be called with 10ms period!
+*
 * @return       status - Status of initialization
 */
 ////////////////////////////////////////////////////////////////////////////////
@@ -701,23 +822,25 @@ boot_status_t boot_hndl(void)
     // Handle bootloader communication
     status |= boot_com_hndl();
 
-
-
-    /// TESTING::::
-
-    //boot_com_send_connect();
-    //boot_com_send_flash((uint8_t*) "Hello", 5U );
-
+    // Handle FSM
+    (void) fsm_hndl( g_boot_fsm );
 
     return status;
 }
 
-
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Get bootloader FSM state
+*
+* @return       state - Current state of bootloader FSM
+*/
+////////////////////////////////////////////////////////////////////////////////
 boot_state_t boot_get_state(void)
 {
     boot_state_t state = eBOOT_STATE_IDLE;
 
-    // TODO: ...
+    // Get state
+    state = (boot_state_t) fsm_get_state( g_boot_fsm );
 
     return state;
 }
