@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <string.h>
 
 #include "boot.h"
 #include "boot_com.h"
@@ -77,19 +78,15 @@ BOOT_CFG_STATIC_ASSERT( sizeof(boot_shared_mem_t) == 32U );
  */
 typedef void (*p_func)(void);
 
-#if ( 1 == BOOT_CFG_DEBUG_EN )
-
-    /**
-     *  Bootloader message status description
-     */
-    typedef struct
-    {
-        const char *        desc;       /**<Status description string */
-        boot_msg_status_t   status;     /**<Status enumeration */
-    } boot_msg_status_desc_t;
-
-#endif // ( 1 == BOOT_CFG_DEBUG_EN )
-
+/**
+ *  Flashing data info
+ */
+typedef struct
+{
+    uint32_t working_addr;      /**<Working address of FLASH */
+    uint32_t flashed_bytes;     /**<Number of flashed bytes */
+    uint32_t fw_size;           /**<New firmware image size in bytes */
+} boot_flashing_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Function prototypes
@@ -150,6 +147,10 @@ static const fsm_cfg_t g_boot_fsm_cfg_table =
     .period = 10.0f // ms
 };
 
+/**
+ *  Flashing data
+ */
+static boot_flashing_t g_boot_flashing = { 0 };
 
 ////////////////////////////////////////////////////////////////////////////////
 // Functions
@@ -537,7 +538,8 @@ static boot_msg_status_t boot_hw_ver_check(const uint32_t hw_ver)
 
 static void boot_fsm_idle_hndl(void)
 {
-
+    // Clear flashing data informations
+    memset( &g_boot_flashing, 0U, sizeof( g_boot_flashing ));
 }
 
 static void boot_fsm_prepare_hndl(void)
@@ -652,6 +654,10 @@ void boot_com_prepare_msg_rcv_cb(const uint32_t fw_size, const uint32_t fw_ver, 
     if ( eBOOT_MSG_OK == msg_status )
     {
         fsm_goto_state( g_boot_fsm, eBOOT_STATE_FLASH );
+
+        // Prepare flashing data
+        g_boot_flashing.fw_size         = fw_size;
+        g_boot_flashing.working_addr    = BOOT_CFG_APP_HEAD_ADDR;
     }
 
     // Some problems during prepare operation -> enter IDLE state and wait for next command from Boot Manager
@@ -692,12 +698,62 @@ void boot_com_prepare_rsp_msg_rcv_cb(const boot_msg_status_t msg_status)
 ////////////////////////////////////////////////////////////////////////////////
 void boot_com_flash_msg_rcv_cb(const uint8_t * const p_data, const uint16_t size)
 {
+    boot_msg_status_t msg_status = eBOOT_MSG_OK;
 
-    // Unused param
-    (void) p_data;
+    // In FLASHING state
+    if ( eBOOT_STATE_FLASH == boot_get_state())
+    {
+        // All data has been flashed
+        if ( g_boot_flashing.flashed_bytes < g_boot_flashing.fw_size )
+        {
+            // Flashing OK
+            if ( eBOOT_OK == boot_if_flash_write( g_boot_flashing.working_addr, size, p_data ))
+            {
+                // Increment working address
+                g_boot_flashing.working_addr += size;
 
-    BOOT_DBG_PRINT( "Flash Bootloader Message Reception Callback..." );
-    BOOT_DBG_PRINT( "    - size: %d bytes", size );
+                // Increment flashed bytes
+                g_boot_flashing.flashed_bytes += size;
+
+                // Complete FW image flashed
+                if ( g_boot_flashing.flashed_bytes == g_boot_flashing.fw_size )
+                {
+                    // Image flashed completely -> enter EXIT state
+                    fsm_goto_state( g_boot_fsm, eBOOT_STATE_EXIT );
+                }
+            }
+
+            // Flashing error
+            else
+            {
+                msg_status = eBOOT_MSG_ERROR_FLASH_WRITE;
+
+                // Something not OK, enter IDLE state
+                fsm_goto_state( g_boot_fsm, eBOOT_STATE_IDLE );
+            }
+        }
+
+        // Shall not ended up here as comple firmware are flashed
+        else
+        {
+            msg_status = eBOOT_MSG_ERROR_FLASH_WRITE;
+
+            // Something not OK, enter IDLE state
+            fsm_goto_state( g_boot_fsm, eBOOT_STATE_IDLE );
+        }
+    }
+
+    // Not in PREPARE state
+    else
+    {
+        msg_status = eBOOT_MSG_ERROR_INVALID_REQ;
+
+        // Something not OK, enter IDLE state
+        fsm_goto_state( g_boot_fsm, eBOOT_STATE_IDLE );
+    }
+
+    // Send prepare msg response
+    boot_com_send_prepare_rsp( msg_status );
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -726,9 +782,42 @@ void boot_com_flash_rsp_msg_rcv_cb(const boot_msg_status_t msg_status)
 ////////////////////////////////////////////////////////////////////////////////
 void boot_com_exit_msg_rcv_cb(void)
 {
+    boot_msg_status_t msg_status = eBOOT_MSG_OK;
 
+    // In EXIT state
+    if ( eBOOT_STATE_EXIT == boot_get_state())
+    {
+        // Application image validated OK
+        if ( eBOOT_OK == boot_fw_image_validate())
+        {
+            // Clear boot reason & counter
+            boot_shared_mem_set_boot_reason( eBOOT_REASON_NONE );
+            boot_shared_mem_set_boot_cnt( 0U );
 
-    BOOT_DBG_PRINT( "Exit Bootloader Message Reception Callback..." );
+            // Jump to application
+            boot_start_application();
+
+            // This line is not reached as cpu starts executing application code...
+        }
+
+        // Application image validated ERROR
+        else
+        {
+            msg_status = eBOOT_MSG_ERROR_VALIDATION;
+        }
+    }
+
+    // Not in PREPARE state
+    else
+    {
+        msg_status = eBOOT_MSG_ERROR_INVALID_REQ;
+
+        // Something not OK, enter IDLE state
+        fsm_goto_state( g_boot_fsm, eBOOT_STATE_IDLE );
+    }
+
+    // Send prepare msg response
+    boot_com_send_prepare_rsp( msg_status );
 }
 
 ////////////////////////////////////////////////////////////////////////////////
