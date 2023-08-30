@@ -424,22 +424,15 @@ static void boot_init_shared_mem(void)
 static void boot_wait(const uint32_t ms)
 {
     // Get current ticks
-    const   uint32_t now        = BOOT_GET_SYSTICK();
-            uint32_t cnt_10ms   = now;
+    const uint32_t now = BOOT_GET_SYSTICK();
 
     if ( ms > 0 )
     {
         // Wait
         while((uint32_t)( BOOT_GET_SYSTICK() - now ) <= ms )
         {
-            // Every 10ms during wait time
-            if ((uint32_t) ( BOOT_GET_SYSTICK() - cnt_10ms ) >= 10U )
-            {
-                cnt_10ms = BOOT_GET_SYSTICK();
-
-                // Handle bootloader tasks
-                boot_hndl();
-            }
+            // Handle bootloader tasks
+            boot_hndl();
         }
     }
 }
@@ -590,6 +583,8 @@ void boot_com_connect_msg_rcv_cb(void)
 
     // Send connect msg response
     boot_com_send_connect_rsp( msg_status );
+
+    BOOT_DBG_PRINT( "Connect msg received...");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -670,6 +665,9 @@ void boot_com_prepare_msg_rcv_cb(const uint32_t fw_size, const uint32_t fw_ver, 
 
     // Send prepare msg response
     boot_com_send_prepare_rsp( msg_status );
+
+
+    BOOT_DBG_PRINT( "Prepare msg received...");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

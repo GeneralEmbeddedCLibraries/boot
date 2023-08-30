@@ -788,8 +788,8 @@ static void boot_parse_info_rsp(const boot_header_t * const p_header, const uint
 boot_status_t boot_com_hndl(void)
 {
     boot_status_t   status      = eBOOT_OK;
-    boot_header_t * p_header    = NULL;
-    uint8_t *       p_payload   = NULL;
+    static boot_header_t * p_header    = NULL;
+    static uint8_t *       p_payload   = NULL;
 
     // Parse received messages
     status = boot_parse_hndl((boot_header_t **) &p_header, (uint8_t**) &p_payload );
