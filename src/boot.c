@@ -966,8 +966,6 @@ boot_status_t boot_init(void)
 /**
 *       Handle bootloader logic
 *
-* @note     This function shall be called with 10ms period!
-*
 * @return       status - Status of initialization
 */
 ////////////////////////////////////////////////////////////////////////////////
@@ -979,6 +977,7 @@ boot_status_t boot_hndl(void)
     status |= boot_com_hndl();
 
     // Handle FSM
+    // TODO: FSM timings are now not valid!!! As this loop is not being called every 10ms!!!
     (void) fsm_hndl( g_boot_fsm );
 
     return status;
