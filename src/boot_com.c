@@ -37,7 +37,7 @@
 /**
  *  Bootloader message preamble
  */
-#define BOOT_MSG_PREAMBLE_VAL               ((uint16_t)( 0x070BU ))
+#define BOOT_MSG_PREAMBLE_VAL               ((uint16_t)( 0x07B0U ))
 
 /**
  *  Booloader communication commands
@@ -503,7 +503,7 @@ static boot_status_t boot_parse_hndl(boot_header_t ** pp_header, uint8_t ** pp_p
     {
         status = eBOOT_ERROR_TIMEOUT;
 
-        BOOT_DBG_PRINT( "ERROR Communication Timeout!" );
+        BOOT_DBG_PRINT( "ERROR: Communication Timeout!" );
     }
 
     return status;

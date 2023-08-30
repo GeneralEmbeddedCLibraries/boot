@@ -933,6 +933,7 @@ boot_status_t boot_init(void)
     // TODO: Handle also that: BOOT_CFG_APP_BOOT_CNT_CHECK_EN
 
 
+
     // No reason to stay in bootloader
     if ( eBOOT_REASON_NONE == g_boot_shared_mem.boot_reason )
     {
@@ -942,9 +943,13 @@ boot_status_t boot_init(void)
             // Back door entry for bootloader
             boot_wait( BOOT_CFG_WAIT_AT_STARTUP_MS );
 
+
+            // TODO: Remove only testing
+#if 0     // TODO: Remove only testing
+
             // Jump to application
             boot_start_application();
-
+#endif
             // This line is not reached as cpu starts executing application code...
         }
     }
