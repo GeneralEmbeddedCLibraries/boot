@@ -790,6 +790,11 @@ void boot_com_exit_msg_rcv_cb(void)
         // Application image validated OK
         if ( eBOOT_OK == boot_fw_image_validate())
         {
+            // Send exit msg response
+            boot_com_send_exit_rsp( eBOOT_MSG_OK );
+
+            boot_wait(3);
+
             // Clear boot reason & counter
             boot_shared_mem_set_boot_reason( eBOOT_REASON_NONE );
             boot_shared_mem_set_boot_cnt( 0U );
@@ -930,8 +935,8 @@ boot_status_t boot_init(void)
 
     // TODO: Handle also that: BOOT_CFG_APP_BOOT_CNT_CHECK_EN
 
-
-
+    // TODO: Remove only testing...
+#if 0
     // No reason to stay in bootloader
     if ( eBOOT_REASON_NONE == g_boot_shared_mem.boot_reason )
     {
@@ -941,16 +946,13 @@ boot_status_t boot_init(void)
             // Back door entry for bootloader
             boot_wait( BOOT_CFG_WAIT_AT_STARTUP_MS );
 
-
-            // TODO: Remove only testing
-#if 0     // TODO: Remove only testing
-
             // Jump to application
             boot_start_application();
-#endif
+
             // This line is not reached as cpu starts executing application code...
         }
     }
+#endif
 
     /**
      *  @note   Bootloader ended up here only if:
