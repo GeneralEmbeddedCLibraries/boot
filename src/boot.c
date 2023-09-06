@@ -537,14 +537,22 @@ static boot_msg_status_t boot_hw_ver_check(const uint32_t hw_ver)
 
 static void boot_fsm_idle_hndl(void)
 {
-    const uint32_t idle_duration = fsm_get_duration( g_boot_fsm );
+    // On first entry
+    if ( true == fsm_get_first_entry( g_boot_fsm ))
+    {
+        // Clear flashing data informations
+        memset( &g_boot_flashing, 0U, sizeof( g_boot_flashing ));
+    }
 
-    // Clear flashing data informations
-    memset( &g_boot_flashing, 0U, sizeof( g_boot_flashing ));
+    // Get idle time duration
+    const uint32_t idle_duration = fsm_get_duration( g_boot_fsm );
 
     // Exit bootloader if idle for too long
     if ( idle_duration >= BOOT_CFG_JUMP_TO_APP_TIMEOUT_MS )
     {
+        // Clear reason to stay in bootloader
+        (void) boot_shared_mem_set_boot_reason( eBOOT_REASON_NONE );
+
         // Start application if valid
         if ( true == gb_fw_image_valid )
         {
@@ -560,8 +568,11 @@ static void boot_fsm_prepare_hndl(void)
 
 static void boot_fsm_flash_hndl(void)
 {
+    // Calcualte time pass from last rx packet
+    const uint32_t time_from_last_rx = (uint32_t) ( BOOT_GET_SYSTICK() - boot_com_get_last_rx_timestamp());
+
     // Communication timeouted
-    if ( boot_com_get_last_rx_timestamp() >= BOOT_CFG_IDLE_TIMEOUT_MS )
+    if ( time_from_last_rx >= BOOT_CFG_IDLE_TIMEOUT_MS )
     {
         fsm_goto_state( g_boot_fsm, eBOOT_STATE_IDLE );
 
@@ -959,15 +970,16 @@ boot_status_t boot_init(void)
     // Initialize bootloader interfaces
     status |= boot_if_init();
 
+    // Check application image in flash
+    (void) boot_fw_image_validate();
+
     // TODO: Handle also that: BOOT_CFG_APP_BOOT_CNT_CHECK_EN
 
-    // TODO: Remove only testing...
-#if 0
     // No reason to stay in bootloader
     if ( eBOOT_REASON_NONE == g_boot_shared_mem.boot_reason )
     {
         // Application image validated OK
-        if ( eBOOT_OK == boot_fw_image_validate())
+        if ( true == gb_fw_image_valid )
         {
             // Back door entry for bootloader
             boot_wait( BOOT_CFG_WAIT_AT_STARTUP_MS );
@@ -978,7 +990,6 @@ boot_status_t boot_init(void)
             // This line is not reached as cpu starts executing application code...
         }
     }
-#endif
 
     /**
      *  @note   Bootloader ended up here only if:
