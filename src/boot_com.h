@@ -38,7 +38,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Functions
 ////////////////////////////////////////////////////////////////////////////////
-boot_status_t boot_com_hndl(void);
+boot_status_t   boot_com_hndl                   (void);
+uint32_t        boot_com_get_last_rx_timestamp  (void);
 
 // Message send functions
 boot_status_t boot_com_send_connect     (void);

@@ -144,13 +144,18 @@ static const fsm_cfg_t g_boot_fsm_cfg_table =
     },
     .name   = "Boot FSM",
     .num_of = eBOOT_STATE_NUM_OF,
-    .period = 10.0f // ms
 };
 
 /**
  *  Flashing data
  */
 static boot_flashing_t g_boot_flashing = { 0 };
+
+/**
+ *  Is FW image inside flash valid
+ */
+static bool gb_fw_image_valid = false;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Functions
@@ -305,6 +310,7 @@ static boot_status_t boot_fw_image_validate(void)
     	// FW image CRC valid
     	if ( app_header.app_crc == fw_crc_calc )
     	{
+    	    gb_fw_image_valid = true;
     		BOOT_DBG_PRINT( "Firmware image OK!" );
     	}
 
@@ -531,23 +537,41 @@ static boot_msg_status_t boot_hw_ver_check(const uint32_t hw_ver)
 
 static void boot_fsm_idle_hndl(void)
 {
+    const uint32_t idle_duration = fsm_get_duration( g_boot_fsm );
+
     // Clear flashing data informations
     memset( &g_boot_flashing, 0U, sizeof( g_boot_flashing ));
+
+    // Exit bootloader if idle for too long
+    if ( idle_duration >= BOOT_CFG_JUMP_TO_APP_TIMEOUT_MS )
+    {
+        // Start application if valid
+        if ( true == gb_fw_image_valid )
+        {
+            boot_start_application();
+        }
+    }
 }
 
 static void boot_fsm_prepare_hndl(void)
 {
-    // TODO: Implement timeout...
+    // No actions...
 }
 
 static void boot_fsm_flash_hndl(void)
 {
-    // TODO: Implement timeout...
+    // Communication timeouted
+    if ( boot_com_get_last_rx_timestamp() >= BOOT_CFG_IDLE_TIMEOUT_MS )
+    {
+        fsm_goto_state( g_boot_fsm, eBOOT_STATE_IDLE );
+
+        BOOT_DBG_PRINT( "ERROR: Communication timeouted!" );
+    }
 }
 
 static void boot_fsm_exit_hndl(void)
 {
-    // TODO: Implement timeout...
+    // No actions...
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -727,9 +751,6 @@ void boot_com_flash_msg_rcv_cb(const uint8_t * const p_data, const uint16_t size
             else
             {
                 msg_status = eBOOT_MSG_ERROR_FLASH_WRITE;
-
-                // Something not OK, enter IDLE state
-                fsm_goto_state( g_boot_fsm, eBOOT_STATE_IDLE );
             }
         }
 
@@ -737,9 +758,6 @@ void boot_com_flash_msg_rcv_cb(const uint8_t * const p_data, const uint16_t size
         else
         {
             msg_status = eBOOT_MSG_ERROR_FLASH_WRITE;
-
-            // Something not OK, enter IDLE state
-            fsm_goto_state( g_boot_fsm, eBOOT_STATE_IDLE );
         }
     }
 
@@ -747,7 +765,10 @@ void boot_com_flash_msg_rcv_cb(const uint8_t * const p_data, const uint16_t size
     else
     {
         msg_status = eBOOT_MSG_ERROR_INVALID_REQ;
+    }
 
+    if ( eBOOT_MSG_OK != msg_status )
+    {
         // Something not OK, enter IDLE state
         fsm_goto_state( g_boot_fsm, eBOOT_STATE_IDLE );
     }
@@ -810,6 +831,9 @@ void boot_com_exit_msg_rcv_cb(void)
         else
         {
             msg_status = eBOOT_MSG_ERROR_VALIDATION;
+
+            // Something not OK, enter IDLE state
+            fsm_goto_state( g_boot_fsm, eBOOT_STATE_IDLE );
         }
     }
 
@@ -981,7 +1005,6 @@ boot_status_t boot_hndl(void)
     status |= boot_com_hndl();
 
     // Handle FSM
-    // TODO: FSM timings are now not valid!!! As this loop is not being called every 10ms!!!
     (void) fsm_hndl( g_boot_fsm );
 
     return status;

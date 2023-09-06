@@ -35,9 +35,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 /**
+ *      Communication idle timeout
+ *
+ * @note    Consecutive bytes shall be received within that timeout period!
+ *
+ *  Unit: ms
+ */
+#define BOOT_COM_IDLE_TIMEOUT_MS            ( 20U )
+
+/**
  *  Bootloader message preamble
  */
-#define BOOT_MSG_PREAMBLE_VAL               ((uint16_t)( 0x07B0U ))
+#define BOOT_COM_MSG_PREAMBLE_VAL           ((uint16_t)( 0x07B0U ))
 
 /**
  *  Booloader communication commands
@@ -307,7 +316,7 @@ static boot_status_t boot_parse_rcv_header(boot_parser_t * const p_parser, boot_
         *p_header = (boot_header_t*) &p_parser->buf.mem[0];
 
         // Preamble OK
-        if ( BOOT_MSG_PREAMBLE_VAL == (*p_header)->field.preamble )
+        if ( BOOT_COM_MSG_PREAMBLE_VAL == (*p_header)->field.preamble )
         {
             // No payload
             if ( 0U == (*p_header)->field.length )
@@ -419,7 +428,7 @@ static bool boot_timeout_check(boot_parser_t * const p_parser)
     if ( eBOOT_PARSER_IDLE != p_parser->mode )
     {
         // Timeout
-        if ((uint32_t) ( BOOT_GET_SYSTICK() - p_parser->last_timestamp ) >= BOOT_CFG_COM_IDLE_TIMEOUT_MS )
+        if ((uint32_t) ( BOOT_GET_SYSTICK() - p_parser->last_timestamp ) >= BOOT_COM_IDLE_TIMEOUT_MS )
         {
             timeout = true;
 
@@ -814,6 +823,18 @@ boot_status_t boot_com_hndl(void)
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
+*       Get timestamp of last received byte
+*
+* @return       last_timestamp - Timestamp of last rx byte in ms
+*/
+////////////////////////////////////////////////////////////////////////////////
+uint32_t boot_com_get_last_rx_timestamp(void)
+{
+    return g_parser.last_timestamp;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
 *       Send Connect Message
 *
 * @note     Shall only be used by Boot Manager!
@@ -827,7 +848,7 @@ boot_status_t boot_com_send_connect(void)
     boot_header_t header = { .U = 0U };
 
     // Assemble command
-    header.field.preamble   = BOOT_MSG_PREAMBLE_VAL;
+    header.field.preamble   = BOOT_COM_MSG_PREAMBLE_VAL;
     header.field.length     = 0U;
     header.field.source     = eCOM_MSG_SRC_BOOT_MANAGER;
     header.field.command    = eBOOT_MSG_CMD_CONNECT;
@@ -857,7 +878,7 @@ boot_status_t boot_com_send_connect_rsp(const boot_msg_status_t msg_status)
     boot_header_t header = { .U = 0U };
 
     // Assemble command
-    header.field.preamble   = BOOT_MSG_PREAMBLE_VAL;
+    header.field.preamble   = BOOT_COM_MSG_PREAMBLE_VAL;
     header.field.length     = 0U;
     header.field.source     = eCOM_MSG_SRC_BOOTLOADER;
     header.field.command    = eBOOT_MSG_CMD_CONNECT_RSP;
@@ -891,7 +912,7 @@ boot_status_t boot_com_send_prepare(const uint32_t fw_size, const uint32_t fw_ve
     boot_prepare_payload_t  payload = {0};
 
     // Assemble command
-    header.field.preamble   = BOOT_MSG_PREAMBLE_VAL;
+    header.field.preamble   = BOOT_COM_MSG_PREAMBLE_VAL;
     header.field.length     = 0U;
     header.field.source     = eCOM_MSG_SRC_BOOT_MANAGER;
     header.field.command    = eBOOT_MSG_CMD_PREPARE;
@@ -927,7 +948,7 @@ boot_status_t boot_com_send_prepare_rsp(const boot_msg_status_t msg_status)
     boot_header_t header = { .U = 0U };
 
     // Assemble command
-    header.field.preamble   = BOOT_MSG_PREAMBLE_VAL;
+    header.field.preamble   = BOOT_COM_MSG_PREAMBLE_VAL;
     header.field.length     = 0U;
     header.field.source     = eCOM_MSG_SRC_BOOTLOADER;
     header.field.command    = eBOOT_MSG_CMD_PREPARE_RSP;
@@ -959,7 +980,7 @@ boot_status_t boot_com_send_flash(const uint8_t * const p_data, const uint16_t s
     boot_header_t header  = { .U = 0U };
 
     // Assemble command
-    header.field.preamble   = BOOT_MSG_PREAMBLE_VAL;
+    header.field.preamble   = BOOT_COM_MSG_PREAMBLE_VAL;
     header.field.length     = size;
     header.field.source     = eCOM_MSG_SRC_BOOT_MANAGER;
     header.field.command    = eBOOT_MSG_CMD_FLASH;
@@ -990,7 +1011,7 @@ boot_status_t boot_com_send_flash_rsp(const boot_msg_status_t msg_status)
     boot_header_t header = { .U = 0U };
 
     // Assemble command
-    header.field.preamble   = BOOT_MSG_PREAMBLE_VAL;
+    header.field.preamble   = BOOT_COM_MSG_PREAMBLE_VAL;
     header.field.length     = 0U;
     header.field.source     = eCOM_MSG_SRC_BOOTLOADER;
     header.field.command    = eBOOT_MSG_CMD_FLASH_RSP;
@@ -1020,7 +1041,7 @@ boot_status_t boot_com_send_exit(void)
     boot_header_t header = { .U = 0U };
 
     // Assemble command
-    header.field.preamble   = BOOT_MSG_PREAMBLE_VAL;
+    header.field.preamble   = BOOT_COM_MSG_PREAMBLE_VAL;
     header.field.length     = 0U;
     header.field.source     = eCOM_MSG_SRC_BOOT_MANAGER;
     header.field.command    = eBOOT_MSG_CMD_EXIT;
@@ -1050,7 +1071,7 @@ boot_status_t boot_com_send_exit_rsp(const boot_msg_status_t msg_status)
     boot_header_t header = { .U = 0U };
 
     // Assemble command
-    header.field.preamble   = BOOT_MSG_PREAMBLE_VAL;
+    header.field.preamble   = BOOT_COM_MSG_PREAMBLE_VAL;
     header.field.length     = 0U;
     header.field.source     = eCOM_MSG_SRC_BOOTLOADER;
     header.field.command    = eBOOT_MSG_CMD_EXIT_RSP;
@@ -1080,7 +1101,7 @@ boot_status_t boot_com_send_info(void)
     boot_header_t header = { .U = 0U };
 
     // Assemble command
-    header.field.preamble   = BOOT_MSG_PREAMBLE_VAL;
+    header.field.preamble   = BOOT_COM_MSG_PREAMBLE_VAL;
     header.field.length     = 0U;
     header.field.source     = eCOM_MSG_SRC_BOOT_MANAGER;
     header.field.command    = eBOOT_MSG_CMD_INFO;
@@ -1111,7 +1132,7 @@ boot_status_t boot_com_send_info_rsp(const uint32_t boot_ver, const boot_msg_sta
     boot_header_t header  = { .U = 0U };
 
     // Assemble command
-    header.field.preamble   = BOOT_MSG_PREAMBLE_VAL;
+    header.field.preamble   = BOOT_COM_MSG_PREAMBLE_VAL;
     header.field.length     = sizeof(boot_ver);
     header.field.source     = eCOM_MSG_SRC_BOOTLOADER;
     header.field.command    = eBOOT_MSG_CMD_INFO_RSP;
