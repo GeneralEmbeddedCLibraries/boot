@@ -733,7 +733,7 @@ void boot_com_flash_msg_rcv_cb(const uint8_t * const p_data, const uint16_t size
             }
         }
 
-        // Shall not ended up here as comple firmware are flashed
+        // Shall not ended up here as compete firmware are flashed
         else
         {
             msg_status = eBOOT_MSG_ERROR_FLASH_WRITE;
@@ -793,7 +793,8 @@ void boot_com_exit_msg_rcv_cb(void)
             // Send exit msg response
             boot_com_send_exit_rsp( eBOOT_MSG_OK );
 
-            boot_wait(3);
+            // Wait for response to get send
+            boot_wait( 5U );
 
             // Clear boot reason & counter
             boot_shared_mem_set_boot_reason( eBOOT_REASON_NONE );
@@ -851,12 +852,13 @@ void boot_com_exit_rsp_msg_rcv_cb(const boot_msg_status_t msg_status)
 ////////////////////////////////////////////////////////////////////////////////
 void boot_com_info_msg_rcv_cb(void)
 {
-    boot_msg_status_t msg_status = eBOOT_MSG_OK;
+    boot_msg_status_t   msg_status  = eBOOT_MSG_OK;
+    uint32_t            boot_ver    = 0U;
 
     // In IDLE state
     if ( eBOOT_STATE_IDLE == boot_get_state())
     {
-
+        boot_ver = version_get_sw( NULL, NULL, NULL, NULL );
     }
 
     // Not in IDLE state
@@ -866,7 +868,7 @@ void boot_com_info_msg_rcv_cb(void)
     }
 
     // Send info msg response
-    boot_com_send_prepare_rsp( msg_status );
+    boot_com_send_info_rsp( boot_ver, msg_status );
 }
 
 ////////////////////////////////////////////////////////////////////////////////
