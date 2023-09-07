@@ -535,6 +535,13 @@ static boot_msg_status_t boot_hw_ver_check(const uint32_t hw_ver)
     return status;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       IDLE bootloader FSM state
+*
+* @return       void
+*/
+////////////////////////////////////////////////////////////////////////////////
 static void boot_fsm_idle_hndl(void)
 {
     // On first entry
@@ -550,22 +557,36 @@ static void boot_fsm_idle_hndl(void)
     // Exit bootloader if idle for too long
     if ( idle_duration >= BOOT_CFG_JUMP_TO_APP_TIMEOUT_MS )
     {
-        // Clear reason to stay in bootloader
-        (void) boot_shared_mem_set_boot_reason( eBOOT_REASON_NONE );
-
         // Start application if valid
         if ( true == gb_fw_image_valid )
         {
+            // Clear reason to stay in bootloader
+            (void) boot_shared_mem_set_boot_reason( eBOOT_REASON_NONE );
+
             boot_start_application();
         }
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       PREPARE bootloader FSM state
+*
+* @return       void
+*/
+////////////////////////////////////////////////////////////////////////////////
 static void boot_fsm_prepare_hndl(void)
 {
     // No actions...
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       FLASH bootloader FSM state
+*
+* @return       void
+*/
+////////////////////////////////////////////////////////////////////////////////
 static void boot_fsm_flash_hndl(void)
 {
     // Calcualte time pass from last rx packet
@@ -580,6 +601,13 @@ static void boot_fsm_flash_hndl(void)
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       EXIT bootloader FSM state
+*
+* @return       void
+*/
+////////////////////////////////////////////////////////////////////////////////
 static void boot_fsm_exit_hndl(void)
 {
     // No actions...
