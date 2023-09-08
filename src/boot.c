@@ -151,11 +151,6 @@ static const fsm_cfg_t g_boot_fsm_cfg_table =
  */
 static boot_flashing_t g_boot_flashing = { 0 };
 
-/**
- *  Is FW image inside flash valid
- */
-static bool gb_fw_image_valid = false;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 // Functions
@@ -310,7 +305,6 @@ static boot_status_t boot_fw_image_validate(void)
     	// FW image CRC valid
     	if ( app_header.app_crc == fw_crc_calc )
     	{
-    	    gb_fw_image_valid = true;
     		BOOT_DBG_PRINT( "Firmware image OK!" );
     	}
 
@@ -544,21 +538,29 @@ static boot_msg_status_t boot_hw_ver_check(const uint32_t hw_ver)
 ////////////////////////////////////////////////////////////////////////////////
 static void boot_fsm_idle_hndl(void)
 {
+    static bool try_to_leave = false;
+
     // On first entry
     if ( true == fsm_get_first_entry( g_boot_fsm ))
     {
         // Clear flashing data informations
         memset( &g_boot_flashing, 0U, sizeof( g_boot_flashing ));
+
+        // Clear flag
+        try_to_leave = false;
     }
 
     // Get idle time duration
     const uint32_t idle_duration = fsm_get_duration( g_boot_fsm );
 
     // Exit bootloader if idle for too long
-    if ( idle_duration >= BOOT_CFG_JUMP_TO_APP_TIMEOUT_MS )
+    if  (   ( idle_duration >= BOOT_CFG_JUMP_TO_APP_TIMEOUT_MS )
+        &&  ( false == try_to_leave ))
     {
-        // Start application if valid
-        if ( true == gb_fw_image_valid )
+        try_to_leave = true;
+
+        // Application image validated OK
+        if ( eBOOT_OK == boot_fw_image_validate())
         {
             // Clear reason to stay in bootloader
             (void) boot_shared_mem_set_boot_reason( eBOOT_REASON_NONE );
@@ -998,16 +1000,13 @@ boot_status_t boot_init(void)
     // Initialize bootloader interfaces
     status |= boot_if_init();
 
-    // Check application image in flash
-    (void) boot_fw_image_validate();
-
     // TODO: Handle also that: BOOT_CFG_APP_BOOT_CNT_CHECK_EN
 
     // No reason to stay in bootloader
     if ( eBOOT_REASON_NONE == g_boot_shared_mem.boot_reason )
     {
         // Application image validated OK
-        if ( true == gb_fw_image_valid )
+        if ( eBOOT_OK == boot_fw_image_validate())
         {
             // Back door entry for bootloader
             boot_wait( BOOT_CFG_WAIT_AT_STARTUP_MS );
