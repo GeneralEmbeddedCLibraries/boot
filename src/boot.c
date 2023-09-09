@@ -66,12 +66,29 @@ BOOT_CFG_STATIC_ASSERT( sizeof(boot_shared_mem_t) == 32U );
  *
  *  @note 	Right after application header!
  */
-#define BOOT_APP_START_ADDR				( BOOT_CFG_APP_HEAD_ADDR + BOOT_CFG_APP_HEAD_SIZE )
+#define BOOT_APP_START_ADDR				        ( BOOT_CFG_APP_HEAD_ADDR + BOOT_CFG_APP_HEAD_SIZE )
 
 /**
  *      Shared memory layout version
  */
-#define BOOT_SHARED_MEM_VER             ( 1 )
+#define BOOT_SHARED_MEM_VER                     ( 1 )
+
+/**
+ *  Bootloader idle timeout time in various states
+ *
+ *  @note   This timeout resets the bootloader upgrade state machine in case
+ *          FW upgrade started and communication activity stops.
+ *
+ *          After that time bootloader state machine enters IDLE state and waits
+ *          for fw upgrade process to re-start.
+ *
+ *          This time shall be bigger than erase time!
+ *
+ *  Unit: ms
+ */
+#define BOOT_CFG_PREPARE_IDLE_TIMEOUT_MS        ( 3000U )
+#define BOOT_CFG_FLASH_IDLE_TIMEOUT_MS          ( 100U )
+#define BOOT_CFG_EXIT_IDLE_TIMEOUT_MS           ( 500U )
 
 /**
  *  Reset vector function pointer
@@ -579,7 +596,16 @@ static void boot_fsm_idle_hndl(void)
 ////////////////////////////////////////////////////////////////////////////////
 static void boot_fsm_prepare_hndl(void)
 {
-    // No actions...
+    // Get time in that state
+    const uint32_t state_duration = fsm_get_duration( g_boot_fsm );
+
+    // Boot process idle for too long -> enter IDLE
+    if ( state_duration >= BOOT_CFG_PREPARE_IDLE_TIMEOUT_MS )
+    {
+        fsm_goto_state( g_boot_fsm, eBOOT_STATE_IDLE );
+
+        BOOT_DBG_PRINT( "ERROR: Prepare state timeouted!" );
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -591,11 +617,15 @@ static void boot_fsm_prepare_hndl(void)
 ////////////////////////////////////////////////////////////////////////////////
 static void boot_fsm_flash_hndl(void)
 {
+    // Get time in that state
+    const uint32_t state_duration = fsm_get_duration( g_boot_fsm );
+
     // Calcualte time pass from last rx packet
     const uint32_t time_from_last_rx = (uint32_t) ( BOOT_GET_SYSTICK() - boot_com_get_last_rx_timestamp());
 
-    // Communication timeouted
-    if ( time_from_last_rx >= BOOT_CFG_IDLE_TIMEOUT_MS )
+    // Communication timeouted after being idle for two long
+    if  (   ( time_from_last_rx >= BOOT_CFG_FLASH_IDLE_TIMEOUT_MS )
+        &&  ( state_duration >= BOOT_CFG_FLASH_IDLE_TIMEOUT_MS ))
     {
         fsm_goto_state( g_boot_fsm, eBOOT_STATE_IDLE );
 
@@ -612,7 +642,16 @@ static void boot_fsm_flash_hndl(void)
 ////////////////////////////////////////////////////////////////////////////////
 static void boot_fsm_exit_hndl(void)
 {
-    // No actions...
+    // Get time in that state
+    const uint32_t state_duration = fsm_get_duration( g_boot_fsm );
+
+    // Boot process idle for too long -> enter IDLE
+    if ( state_duration >= BOOT_CFG_EXIT_IDLE_TIMEOUT_MS )
+    {
+        fsm_goto_state( g_boot_fsm, eBOOT_STATE_IDLE );
+
+        BOOT_DBG_PRINT( "ERROR: Exit state timeouted!" );
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -802,7 +841,7 @@ void boot_com_flash_msg_rcv_cb(const uint8_t * const p_data, const uint16_t size
         }
     }
 
-    // Not in PREPARE state
+    // Not in FLASH state
     else
     {
         msg_status = eBOOT_MSG_ERROR_INVALID_REQ;
