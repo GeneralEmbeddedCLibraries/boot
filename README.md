@@ -62,6 +62,89 @@ Change bootloader configuration for shared memory linker directive according to 
 
 More info about no-init memory: https://interrupt.memfault.com/blog/noinit-memory 
 
+## **Validation of new application image**
+
+### **1. New application size check**
+Bootloader can check if new application will fitt into reserved application flash by defining maximum application size and enabling app size check.
+
+Firmware size check configuration in ***boot_cfg.h***:
+```C
+/**
+ *      Complete (maximum) application size
+ *
+ *  Unit: byte
+ */
+#define BOOT_CFG_APP_SIZE                       (( 512U - 32U ) * 1024U )
+
+/**
+ *      Enable/Disable new firmware size check
+ *
+ * @note    At prepare command bootloader will check if new firmware app
+ *          can be fitted into "BOOT_CFG_APP_SIZE" space, if that macro
+ *          is enabled!
+ */
+#define BOOT_CFG_FW_SIZE_CHECK_EN              ( 1 )
+```
+
+### **2. New aplication SW version compatibility check**
+New application SW version compatibility can be checked if module is configurted to do so:
+ - *BOOT_CFG_FW_VER_CHECK_EN*: When enabled, it prevents to upload application that is not suitable for current bootloader version according to Release Management. Limit new application version on the top.
+ - *BOOT_CFG_FW_DOWNGRADE_EN*: When enabled, it prevents uploading older application that is currently running. Limit new application version on the bottom. 
+
+Firmware compatibility configuration in ***boot_cfg.h***:
+```C
+/**
+ *      Enable/Disable new firmware version compatibility check
+ */
+#define BOOT_CFG_FW_VER_CHECK_EN               ( 0 )
+
+/**
+ *      New firmware compatibility value
+ *
+ *  @note   New firmware version is compatible up to
+ *          version specified in following defines.
+ */
+#if ( 1 == BOOT_CFG_FW_VER_CHECK_EN )
+    #define BOOT_CFG_FW_VER_MAJOR               ( 1 )
+    #define BOOT_CFG_FW_VER_MINOR               ( 0 )
+    #define BOOT_CFG_FW_VER_DEVELOP             ( 0 )
+    #define BOOT_CFG_FW_VER_TEST                ( 0 )
+#endif
+
+/**
+ *      Enable/Disable firmware downgrade
+ *
+ * @note    At prepare command bootloader will check if new firmware app
+ *          has higher version than current, if that macro is enabled!
+ */
+#define BOOT_CFG_FW_DOWNGRADE_EN                ( 0 )
+```
+
+### **3. New aplication HW compatibility check**
+Bootloader can check for hardware compatibility with new application image and can prevent uploading of application if not suitable for given HW version of the system. Each application image shall have a HW version embedded into application header and that information is then used to check for HW compatibility.
+
+Hardware compatibility configuration in ***boot_cfg.h***:
+```C
+/**
+ *      Enable/Disable new firmware version compatibility check
+ */
+#define BOOT_CFG_HW_VER_CHECK_EN                ( 0 )
+
+/**
+ *      New firmware hardware compatibility value
+ *
+ *  @note   New firmware hardware version is compatible up to
+ *          version specified in following defines.
+ */
+#if ( 1 == BOOT_CFG_HW_VER_CHECK_EN )
+    #define BOOT_CFG_HW_VER_MAJOR               ( 1 )
+    #define BOOT_CFG_HW_VER_MINOR               ( 0 )
+    #define BOOT_CFG_HW_VER_DEVELOP             ( 0 )
+    #define BOOT_CFG_HW_VER_TEST                ( 0 )
+#endif
+```
+
+
 ## **Dependencies**
 
 ### **1. Flash memory map**
