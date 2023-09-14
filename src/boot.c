@@ -581,11 +581,13 @@ static void boot_fsm_idle_hndl(void)
     // Get idle time duration
     const uint32_t idle_duration = fsm_get_duration( g_boot_fsm );
 
-    // Exit bootloader if idle for too long
+    // Exit bootloader if idle for too long, but try only once
     if  (   ( idle_duration >= BOOT_CFG_JUMP_TO_APP_TIMEOUT_MS )
         &&  ( false == try_to_leave ))
     {
         try_to_leave = true;
+
+        BOOT_DBG_PRINT( "Nothing to do... Exiting bootloader..." );
 
         // Application image validated OK
         if ( eBOOT_OK == boot_fw_image_validate())
