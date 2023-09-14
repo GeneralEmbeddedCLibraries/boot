@@ -20,7 +20,7 @@ Following data is being exhange between bootloader and application:
 Shared memory space V1 is 32 bytes in size with following data structure:
 ![](doc/pic/Shared_Memory_V1.png)
 
-Setup linker script for common shared memory between bootloader and application by first define new memory inside RAM called ***SHARED_MEM*** region:
+Setup linker script for common shared memory between bootloader and application by first defining new memory inside RAM called ***SHARED_MEM*** region:
 
 ```
 /* Memories definition */
@@ -63,9 +63,13 @@ Change bootloader configuration for shared memory linker directive according to 
 More info about no-init memory: https://interrupt.memfault.com/blog/noinit-memory 
 
 ## **Validation of new application image**
+Bootloader support up to three different validation criteria for new application before update process can initiate:
+ 1. Application size check
+ 2. Application SW compatibility check
+ 3. Application HW compatibility check
 
-### **1. New application size check**
-Bootloader can check if new application will fitt into reserved application flash by defining maximum application size and enabling app size check.
+### **1. Application size check**
+Bootloader can check if new application will fit into reserved application flash by defining maximum application size and enabling app size check.
 
 Firmware size check configuration in ***boot_cfg.h***:
 ```C
@@ -86,7 +90,7 @@ Firmware size check configuration in ***boot_cfg.h***:
 #define BOOT_CFG_FW_SIZE_CHECK_EN              ( 1 )
 ```
 
-### **2. New aplication SW version compatibility check**
+### **2. Aplication SW version compatibility check**
 New application SW version compatibility can be checked if module is configurted to do so:
  - *BOOT_CFG_FW_VER_CHECK_EN*: When enabled, it prevents to upload application that is not suitable for current bootloader version according to Release Management. Limit new application version on the top.
  - *BOOT_CFG_FW_DOWNGRADE_EN*: When enabled, it prevents uploading older application that is currently running. Limit new application version on the bottom. 
@@ -120,7 +124,7 @@ Firmware compatibility configuration in ***boot_cfg.h***:
 #define BOOT_CFG_FW_DOWNGRADE_EN                ( 0 )
 ```
 
-### **3. New aplication HW compatibility check**
+### **3. New aplication HW version compatibility check**
 Bootloader can check for hardware compatibility with new application image and can prevent uploading of application if not suitable for given HW version of the system. Each application image shall have a HW version embedded into application header and that information is then used to check for HW compatibility.
 
 Hardware compatibility configuration in ***boot_cfg.h***:
@@ -163,8 +167,10 @@ TODO: Add more info here...
 ## **Limitations**
 
 ### **1. ARM Cortex-M family**
-Current implementation of bootloader **supports only ARM Cortex-M** processor family, as it expects stack pointer to be first 4 bytes of binary file, follow by reset vector handler. 
+Current implementation of bootloader **supports only ARM Cortex-M** processor family, as it expects stack pointer to be first 4 bytes of binary file, follow by reset vector. 
 
+Picture taken from [*ARM® Cortex®-M for Beginners: An overview of the ARM Cortex-M processor family and comparison*(https://community.arm.com/arm-community-blogs/b/architectures-and-processors-blog/posts/white-paper-cortex-m-for-beginners-an-overview-of-the-arm-cortex-m-processor-family-and-comparison):
+![](doc/pic/Cortex-M_MSP_RstVector.png)
 
 ## **General Embedded C Libraries Ecosystem**
 In order to be part of *General Embedded C Libraries Ecosystem* this module must be placed in following path: 
