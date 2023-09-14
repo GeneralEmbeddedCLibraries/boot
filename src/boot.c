@@ -299,6 +299,10 @@ static uint32_t boot_fw_image_calc_crc(const uint32_t size)
 * @note 	That function checks for application header CRC and complete
 * 			firmware image CRC.
 *
+* 			Time execution on Cortex-M4 @150MHz:
+* 			    -O0:    137 ms
+* 			    -Ofast: 110 ms
+*
 * @return       status - Status of validation
 */
 ////////////////////////////////////////////////////////////////////////////////
@@ -369,8 +373,8 @@ static boot_status_t boot_start_application(void)
 		__set_MSP( BOOT_APP_START_ADDR );
 
 		// Next address is reset vector for app
-		uint32_t app_addr = *(uint32_t*)( BOOT_APP_START_ADDR + 4U );
-		p_func p_app = (p_func)app_addr;
+		const uint32_t app_addr = *(uint32_t*)( BOOT_APP_START_ADDR + 4U );
+		p_func p_app = (p_func) app_addr;
 
 		// Start Application
 		p_app();
@@ -582,6 +586,7 @@ static void boot_fsm_idle_hndl(void)
             // Clear reason to stay in bootloader
             (void) boot_shared_mem_set_boot_reason( eBOOT_REASON_NONE );
 
+            // Exit boot by starting application
             boot_start_application();
         }
     }
@@ -623,13 +628,16 @@ static void boot_fsm_flash_hndl(void)
     // Calcualte time pass from last rx packet
     const uint32_t time_from_last_rx = (uint32_t) ( BOOT_GET_SYSTICK() - boot_com_get_last_rx_timestamp());
 
-    // Communication timeouted after being idle for two long
-    if  (   ( time_from_last_rx >= BOOT_CFG_FLASH_IDLE_TIMEOUT_MS )
-        &&  ( state_duration >= BOOT_CFG_FLASH_IDLE_TIMEOUT_MS ))
+    // After a while in flash state
+    if ( state_duration >= BOOT_CFG_FLASH_IDLE_TIMEOUT_MS )
     {
-        fsm_goto_state( g_boot_fsm, eBOOT_STATE_IDLE );
+        // Check for communication timeout
+        if ( time_from_last_rx >= BOOT_CFG_FLASH_IDLE_TIMEOUT_MS )
+        {
+            fsm_goto_state( g_boot_fsm, eBOOT_STATE_IDLE );
 
-        BOOT_DBG_PRINT( "ERROR: Communication timeouted!" );
+            BOOT_DBG_PRINT( "ERROR: Communication timeouted!" );
+        }
     }
 }
 
