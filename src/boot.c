@@ -220,7 +220,24 @@ static boot_status_t boot_app_head_read(ver_app_header_t * const p_head)
 {
     boot_status_t status = eBOOT_OK;
 
-    status = boot_if_flash_read( BOOT_CFG_APP_HEAD_ADDR, BOOT_CFG_APP_HEAD_SIZE, (uint8_t*) p_head );
+    // Read application header
+    if ( eBOOT_OK == boot_if_flash_read( BOOT_CFG_APP_HEAD_ADDR, BOOT_CFG_APP_HEAD_SIZE, (uint8_t*) p_head ))
+    {
+        // Calculate application header crc
+        const uint8_t app_head_crc_calc = boot_app_head_calc_crc( p_head );
+
+        // Check CRC
+        if ( app_head_crc_calc != p_head->crc )
+        {
+            // Application header corrupted
+            status = eBOOT_ERROR_CRC;
+            BOOT_DBG_PRINT( "ERROR: Application header corrupted!" );
+        }
+    }
+    else
+    {
+        status = eBOOT_ERROR;
+    }
 
     return status;
 }
@@ -312,13 +329,10 @@ static boot_status_t boot_fw_image_validate(void)
     ver_app_header_t app_header = {0};
 
     // Read application header
-    boot_app_head_read( &app_header );
+    status = boot_app_head_read( &app_header );
 
-    // Calculate application header crc
-    const uint8_t app_head_crc_calc = boot_app_head_calc_crc( &app_header );
-
-    // Check app header CRC is valid
-    if ( app_header.crc == app_head_crc_calc )
+    // Application header OK
+    if ( eBOOT_OK == status )
     {
     	// Calculate firmware image crc
     	const uint32_t fw_crc_calc = boot_fw_image_calc_crc( app_header.app_size );
@@ -335,13 +349,6 @@ static boot_status_t boot_fw_image_validate(void)
         	status = eBOOT_ERROR_CRC;
         	BOOT_DBG_PRINT( "ERROR: Firmware image corrupted!" );
     	}
-    }
-
-    // Application header corrupted
-    else
-    {
-    	status = eBOOT_ERROR_CRC;
-    	BOOT_DBG_PRINT( "ERROR: Application header corrupted!" );
     }
 
 	return status;

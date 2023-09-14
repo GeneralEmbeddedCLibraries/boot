@@ -60,7 +60,7 @@
 #define BOOT_CFG_APP_HEAD_SIZE                  ( 0x100 )
 
 /**
- *      Complete application size
+ *      Complete (maximum) application size
  *
  *  Unit: byte
  */
@@ -70,14 +70,15 @@
  *      Enable/Disable new firmware size check
  *
  * @note    At prepare command bootloader will check if new firmware app
- *          can be fitted into "BOOT_CFG_APP_SIZE" space!
+ *          can be fitted into "BOOT_CFG_APP_SIZE" space, if that macro
+ *          is enabled!
  */
 #define BOOT_CFG_FW_SIZE_CHECK_EN              ( 1 )
 
 /**
  *      Enable/Disable new firmware version compatibility check
  */
-#define BOOT_CFG_FW_VER_CHECK_EN               ( 1 )
+#define BOOT_CFG_FW_VER_CHECK_EN               ( 0 )
 
 /**
  *      New firmware compatibility value
@@ -93,9 +94,17 @@
 #endif
 
 /**
+ *      Enable/Disable firmware downgrade
+ *
+ * @note    At prepare command bootloader will check if new firmware app
+ *          has higher version than current, if that macro is enabled!
+ */
+#define BOOT_CFG_FW_DOWNGRADE_EN                ( 0 )
+
+/**
  *      Enable/Disable new firmware version compatibility check
  */
-#define BOOT_CFG_HW_VER_CHECK_EN               ( 1 )
+#define BOOT_CFG_HW_VER_CHECK_EN                ( 0 )
 
 /**
  *      New firmware hardware compatibility value
@@ -126,7 +135,7 @@
  *          a faulty app and will request new application!
  */
 #if ( 1 == BOOT_CFG_APP_BOOT_CNT_CHECK_EN )
-    #define BOOT_CFG_BOOT_CNT_LIMIT               ( 1 )
+    #define BOOT_CFG_BOOT_CNT_LIMIT               ( 5 )
 #endif
 
 /**
@@ -139,7 +148,7 @@
  *
  *  Unit: ms
  */
-#define BOOT_CFG_WAIT_AT_STARTUP_MS             ( 500U )
+#define BOOT_CFG_WAIT_AT_STARTUP_MS             ( 100U )
 
 /**
  *      Reception buffer size
@@ -149,13 +158,12 @@
 #define BOOT_CFG_RX_BUF_SIZE                    ( 256 )
 
 /**
- *      Communication idle timeout
- *
- * @note    Consecutive bytes shall be received within that timeout period!
+ *  Jump to application (if valid) if communication idle
+ *  for more than this value of timeout
  *
  *  Unit: ms
  */
-#define BOOT_CFG_COM_IDLE_TIMEOUT_MS            ( 20U )
+#define BOOT_CFG_JUMP_TO_APP_TIMEOUT_MS         ( 20000U )
 
 /**
  *  Get system timetick in 32-bit unsigned integer form
