@@ -522,6 +522,22 @@ static boot_msg_status_t boot_fw_ver_check(const uint32_t fw_ver)
         (void) fw_ver;
     #endif
 
+#if ( 1 == BOOT_CFG_FW_DOWNGRADE_EN )
+
+        ver_app_header_t app_header = {0};
+
+        // Application header valid
+        if ( eBOOT_OK == boot_app_head_read( &app_header ))
+        {
+            // If new application version is older of the same -> invalid firmware version
+            if ( fw_ver <= app_header.sw_ver )
+            {
+                status = eBOOT_MSG_ERROR_FW_VER;
+            }
+        }
+
+#endif
+
     return status;
 }
 
