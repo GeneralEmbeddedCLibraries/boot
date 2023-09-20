@@ -87,7 +87,7 @@ BOOT_CFG_STATIC_ASSERT( sizeof(boot_shared_mem_t) == 32U );
  *  Unit: ms
  */
 #define BOOT_CFG_PREPARE_IDLE_TIMEOUT_MS        ( 3000U )
-#define BOOT_CFG_FLASH_IDLE_TIMEOUT_MS          ( 500U )//( 100U )
+#define BOOT_CFG_FLASH_IDLE_TIMEOUT_MS          ( 100U )
 #define BOOT_CFG_EXIT_IDLE_TIMEOUT_MS           ( 500U )
 
 /**
