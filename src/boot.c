@@ -372,6 +372,14 @@ static boot_status_t boot_fw_image_validate(void)
     	else
     	{
         	status = eBOOT_ERROR_CRC;
+
+            /**
+             *  Erase application header -> This will enable re-flashing
+             *  same version of application as FW compatibility checks
+             *  will not failed!
+             */
+        	(void) boot_app_head_erase();
+
         	BOOT_DBG_PRINT( "ERROR: Firmware image corrupted!" );
     	}
     }
