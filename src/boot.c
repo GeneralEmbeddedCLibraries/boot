@@ -628,11 +628,11 @@ static void boot_fsm_idle_hndl(void)
     {
         try_to_leave = true;
 
+        BOOT_DBG_PRINT( "Nothing to do... Exiting bootloader..." );
+
         // Application image validated OK
         if ( eBOOT_OK == boot_fw_image_validate())
         {
-            BOOT_DBG_PRINT( "Nothing to do... Exiting bootloader..." );
-
             // Clear reason to stay in bootloader
             (void) boot_shared_mem_set_boot_reason( eBOOT_REASON_NONE );
 
@@ -832,9 +832,6 @@ void boot_com_prepare_msg_rcv_cb(const uint32_t fw_size, const uint32_t fw_ver, 
     else
     {
         fsm_goto_state( g_boot_fsm, eBOOT_STATE_IDLE );
-
-        // Erase application header
-        (void) boot_app_head_erase();
     }
 
     // Send prepare msg response
