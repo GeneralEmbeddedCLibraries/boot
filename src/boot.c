@@ -832,6 +832,9 @@ void boot_com_prepare_msg_rcv_cb(const uint32_t fw_size, const uint32_t fw_ver, 
     else
     {
         fsm_goto_state( g_boot_fsm, eBOOT_STATE_IDLE );
+
+        // Erase application header
+        (void) boot_app_head_erase();
     }
 
     // Send prepare msg response
@@ -918,6 +921,9 @@ void boot_com_flash_msg_rcv_cb(const uint8_t * const p_data, const uint16_t size
     {
         // Something not OK, enter IDLE state
         fsm_goto_state( g_boot_fsm, eBOOT_STATE_IDLE );
+
+        // Erase application header
+        (void) boot_app_head_erase();
     }
 
     // Send flash msg response
@@ -978,6 +984,9 @@ void boot_com_exit_msg_rcv_cb(void)
         else
         {
             msg_status = eBOOT_MSG_ERROR_VALIDATION;
+
+            // Erase application header
+            (void) boot_app_head_erase();
 
             // Something not OK, enter IDLE state
             fsm_goto_state( g_boot_fsm, eBOOT_STATE_IDLE );
