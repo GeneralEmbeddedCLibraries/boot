@@ -110,6 +110,7 @@ typedef struct
 ////////////////////////////////////////////////////////////////////////////////
 static uint8_t              boot_calc_crc               (const uint8_t * const p_data, const uint16_t size);
 static boot_status_t        boot_app_head_read          (ver_app_header_t * const p_head);
+static boot_status_t        boot_app_head_erase         (void);
 static uint8_t              boot_app_head_calc_crc      (const ver_app_header_t * const p_head);
 static uint32_t             boot_fw_image_calc_crc      (const uint32_t size);
 static boot_status_t        boot_fw_image_validate      (void);
@@ -235,6 +236,30 @@ static boot_status_t boot_app_head_read(ver_app_header_t * const p_head)
         }
     }
     else
+    {
+        status = eBOOT_ERROR;
+    }
+
+    return status;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Erase application header
+*
+* @note     This function is being used for safety reasons when upgrade process
+*           gets either canceled, timeouted or interrupted of any other reasons.
+*           Erasing application header creates fresh starts for upgrade process.
+*
+* @return       status  - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
+static boot_status_t boot_app_head_erase(void)
+{
+    boot_status_t status = eBOOT_OK;
+
+    // Erase application header
+    if ( eBOOT_OK != boot_if_flash_erase( BOOT_CFG_APP_HEAD_ADDR, BOOT_CFG_APP_HEAD_SIZE ))
     {
         status = eBOOT_ERROR;
     }
@@ -603,11 +628,11 @@ static void boot_fsm_idle_hndl(void)
     {
         try_to_leave = true;
 
-        BOOT_DBG_PRINT( "Nothing to do... Exiting bootloader..." );
-
         // Application image validated OK
         if ( eBOOT_OK == boot_fw_image_validate())
         {
+            BOOT_DBG_PRINT( "Nothing to do... Exiting bootloader..." );
+
             // Clear reason to stay in bootloader
             (void) boot_shared_mem_set_boot_reason( eBOOT_REASON_NONE );
 
@@ -633,6 +658,9 @@ static void boot_fsm_prepare_hndl(void)
     if ( state_duration >= BOOT_CFG_PREPARE_IDLE_TIMEOUT_MS )
     {
         fsm_goto_state( g_boot_fsm, eBOOT_STATE_IDLE );
+
+        // Erase application header
+        (void) boot_app_head_erase();
 
         BOOT_DBG_PRINT( "ERROR: Prepare state timeouted!" );
     }
@@ -661,6 +689,9 @@ static void boot_fsm_flash_hndl(void)
         {
             fsm_goto_state( g_boot_fsm, eBOOT_STATE_IDLE );
 
+            // Erase application header
+            (void) boot_app_head_erase();
+
             BOOT_DBG_PRINT( "ERROR: Communication timeouted!" );
         }
     }
@@ -682,6 +713,9 @@ static void boot_fsm_exit_hndl(void)
     if ( state_duration >= BOOT_CFG_EXIT_IDLE_TIMEOUT_MS )
     {
         fsm_goto_state( g_boot_fsm, eBOOT_STATE_IDLE );
+
+        // Erase application header
+        (void) boot_app_head_erase();
 
         BOOT_DBG_PRINT( "ERROR: Exit state timeouted!" );
     }
