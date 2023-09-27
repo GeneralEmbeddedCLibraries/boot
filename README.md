@@ -331,13 +331,14 @@ if ( eBOOT_OK != boot_init())
     // Initialization failed...
 }
 ```
-
 6. Handle bootloader module
 ```C
-// Handle boot
-(void) boot_hndl();
+@main loop
+{
+  // Handle boot
+  (void) boot_hndl();
+}
 ```
-
 
 7. Preparing application to be bootloadable
  - ***Specify memory regions in application linker file***: 
@@ -382,6 +383,7 @@ In sections add following snippet:
 **NOTE: Linker scripts between application and bootloader shall be alligned!**
 
  - **Vector table offseting**
+
 Example of *system_stm32g4xx.c*, where using preprocessor symbol *__BOOTLOADER_SUPPORT__* to enable offseting:
 ```C
 #ifndef __BOOTLOADER_SUPPORT__
@@ -393,6 +395,7 @@ Example of *system_stm32g4xx.c*, where using preprocessor symbol *__BOOTLOADER_S
 **NOTE: Vector table base offset shall be alligned with linker memory settigs!**
 
  - **Application signature tool in post-build**
-Use ***Application Signature Tool*** to sign binary file.
+
+Use [***Application Signature Tool***](app_sign_tool/README.md) to sign binary file.
 
 
