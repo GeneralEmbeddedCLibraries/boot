@@ -163,9 +163,11 @@ Downgrade enable/disable configuration in ***boot_cfg.h***:
 #define BOOT_CFG_FW_DOWNGRADE_EN                ( 1 )
 ```
 
-## **Boot counter**
-
-TODO: Add describtion how to handle boot counter 
+## **Catching reboot loops**
+In order to prevent repetative re-booting of corrupted application, bootloader can be configured to detect such an anomaly. This is done with following logic:
+ 1. On boot, the bootloader increments a boot counter (boot counter is part of a shared memory),
+ 2. After the application has been validated as stable (depends on validation criteria, e.g. 1 minute of working), it resets the counter to 0,
+ 3. If the counter gets to configured limit (via *BOOT_CFG_BOOT_CNT_LIMIT*), the bootloader does not start the app and wait for new application 
 
 Configuring boot counter in ***boot_cfg.h***:
 ```C
