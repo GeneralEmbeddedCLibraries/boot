@@ -163,6 +163,33 @@ Downgrade enable/disable configuration in ***boot_cfg.h***:
 #define BOOT_CFG_FW_DOWNGRADE_EN                ( 1 )
 ```
 
+## **Boot counter**
+
+TODO: Add describtion how to handle boot counter 
+
+Configuring boot counter in ***boot_cfg.h***:
+```C
+/**
+ *      Enable/Disable boot counting check
+ *
+ * @note    Boot count is safety mechanism build into bootloader
+ *          in order to detect malfunctional application!
+ */
+#define BOOT_CFG_APP_BOOT_CNT_CHECK_EN          ( 0 )
+
+/**
+ *      Boot counts limit
+ *
+ *  @note   After boot count reaches that limit it will
+ *          not enter application! Bootloader will declare
+ *          a faulty app and will request new application!
+ */
+#if ( 1 == BOOT_CFG_APP_BOOT_CNT_CHECK_EN )
+    #define BOOT_CFG_BOOT_CNT_LIMIT               ( 5 )
+#endif
+```
+
+
 ## **Dependencies**
 
 ### **1. Flash memory map**

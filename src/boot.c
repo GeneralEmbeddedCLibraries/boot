@@ -104,6 +104,7 @@ static void                 boot_wait                   (const uint32_t ms);
 static boot_msg_status_t    boot_fw_size_check          (const uint32_t fw_size);
 static boot_msg_status_t    boot_fw_ver_check           (const uint32_t fw_ver);
 static boot_msg_status_t    boot_hw_ver_check           (const uint32_t hw_ver);
+static void                 boot_init_boot_counter      (void);
 
 // FSM state handlers
 static void boot_fsm_idle_hndl      (void);
@@ -593,6 +594,45 @@ static boot_msg_status_t boot_hw_ver_check(const uint32_t hw_ver)
     #endif
 
     return status;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Initialize (handle) boot counter
+*
+* @return       void
+*/
+////////////////////////////////////////////////////////////////////////////////
+static void boot_init_boot_counter(void)
+{
+    #if ( 1 == BOOT_CFG_APP_BOOT_CNT_CHECK_EN )
+
+        uint8_t cnt = 0U;
+
+        // Get boot counter
+        if ( eBOOT_OK == boot_shared_mem_get_boot_cnt( &cnt ))
+        {
+            // Limit reached
+            if ( cnt >= BOOT_CFG_BOOT_CNT_LIMIT )
+            {
+                // Clear counter
+                cnt = 0U;
+
+                // Stay in bootloader
+                boot_shared_mem_set_boot_reason( eBOOT_REASON_COM );
+
+                // Corrupt app header in order to prevent entering app
+                boot_app_head_erase();
+            }
+        }
+
+        // Increment boot counter
+        cnt++;
+
+        // Store boot counter
+        (void) boot_shared_mem_set_boot_cnt( cnt );
+
+    #endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1109,7 +1149,8 @@ boot_status_t boot_init(void)
     // Initialize bootloader interfaces
     status |= boot_if_init();
 
-    // TODO: Handle also that: BOOT_CFG_APP_BOOT_CNT_CHECK_EN
+    // Iniatilize (handle) boot counter
+    boot_init_boot_counter();
 
     // No reason to stay in bootloader
     if ( eBOOT_REASON_NONE == g_boot_shared_mem.boot_reason )
@@ -1130,7 +1171,7 @@ boot_status_t boot_init(void)
     /**
      *  @note   Bootloader ended up here only if:
      *
-     *          1. There is no reason to stay in bootloader
+     *          1. There is a reason to stay in bootloader
      *      OR  2. Application image is corrupted
      */
 
