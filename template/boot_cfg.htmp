@@ -125,7 +125,7 @@
  * @note    Boot count is safety mechanism build into bootloader
  *          in order to detect malfunctional application!
  */
-#define BOOT_CFG_APP_BOOT_CNT_CHECK_EN          ( 0 )
+#define BOOT_CFG_APP_BOOT_CNT_CHECK_EN          ( 1 )
 
 /**
  *      Boot counts limit
