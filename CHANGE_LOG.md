@@ -17,8 +17,6 @@ and this project/module adheres to [Semantic Versioning](https://semver.org/spec
 - Bootloader FSM implementation
 - Application SW size and compatibility checks before entering upgrade procedure
 - Down-grade upgrade protection
-- 
-
 
 ### Todo
 - List of open tasks 
