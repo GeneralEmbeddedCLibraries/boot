@@ -39,6 +39,7 @@
 // Functions
 ////////////////////////////////////////////////////////////////////////////////
 boot_status_t   boot_if_init        	(void);
+boot_status_t   boot_if_deinit          (void);
 
 boot_status_t   boot_if_transmit    	(const uint8_t * const p_data, const uint16_t size);
 boot_status_t   boot_if_receive     	(uint8_t * const p_data);
@@ -48,7 +49,7 @@ boot_status_t   boot_if_flash_write 	(const uint32_t addr, const uint32_t size, 
 boot_status_t   boot_if_flash_read   	(const uint32_t addr, const uint32_t size, uint8_t * const p_data);
 boot_status_t   boot_if_flash_erase   	(const uint32_t addr, const uint32_t size);
 
-boot_status_t 	boot_if_deinit			(void);
+
 
 #endif // __BOOT_IF_H
 

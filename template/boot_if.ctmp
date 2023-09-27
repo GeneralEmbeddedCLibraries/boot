@@ -32,6 +32,8 @@
 
 // USER INCLUDE BEGIN...
 
+#include <string.h>
+
 // HAL
 #include "stm32g4xx_hal.h"
 
@@ -39,9 +41,11 @@
 #include "drivers/peripheral/gpio/gpio/src/gpio.h"
 #include "drivers/peripheral/uart/uart/src/uart.h"
 #include "drivers/peripheral/flash/flash/src/flash.h"
+#include "drivers/peripheral/can/can/src/can.h"
 
 // Middleware
 #include "middleware/cli/cli/src/cli.h"
+#include "middleware/ring_buffer/src/ring_buffer.h"
 
 // USER INCLUDE END...
 
@@ -51,6 +55,34 @@
 
 // USER CODE BEGIN...
 
+/**
+ *  Enable/Disable bootloader interface via CAN
+ */
+#define BOOT_IF_CAN_COM_EN                  ( 1 )
+
+#if ( 1 == BOOT_IF_CAN_COM_EN )
+
+    /**
+     *  Reception buffer size in bytes
+     */
+    #define BOOT_IF_RX_BUF_SIZE             ( 512 )
+
+    /**
+     *  CAN Tx message ID
+     *
+     *  @note   According to "VendingMachine_CANMatrix.xlsx" specifications.
+     */
+    #define BOOT_IF_CAN_MSG_TX_ID           ( 0x400 )
+
+    /**
+     *  CAN Rx message ID
+     *
+     *  @note   According to "VendingMachine_CANMatrix.xlsx" specifications.
+     */
+    #define BOOT_IF_CAN_MSG_RX_ID           ( 0x401 )
+
+#endif // ( 1 == BOOT_IF_CAN_COM_EN )
+
 // USER CODE END...
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -58,6 +90,25 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // USER CODE BEGIN...
+
+#if ( 1 == BOOT_IF_CAN_COM_EN )
+
+    /**
+     *  CAN reception buffer by byte
+     */
+    static p_ring_buffer_t gp_rx_buf = NULL;
+
+    /**
+     *  FIFO buffer attributes
+     */
+    static const ring_buffer_attr_t g_buf_attr =
+    {
+       .item_size   = sizeof( uint8_t ),    // Byte size
+       .override    = false,                // Do not lost data
+       .p_mem       = NULL,                 // Dynamically allocate
+    };
+
+#endif
 
 // USER CODE END...
 
@@ -105,15 +156,74 @@ boot_status_t boot_if_init(void)
 
     // USER CODE BEGIN...
 
-    if ( eUART_OK != uart_init( eUART_BOOT ))
-    {
-        status = eBOOT_ERROR;
-    }
+    #if ( 0 == BOOT_IF_CAN_COM_EN )
+        #ifdef DEBUG
+            if ( eUART_OK != uart_init( eUART_BOOT ))
+            {
+                status = eBOOT_ERROR;
+            }
+        #else
+            if ( eUART_OK != uart_init( eUART_DBG ))
+            {
+                status = eBOOT_ERROR;
+            }
+        #endif
+    #else
+
+        if ( eCAN_OK != can_init( eCAN_SYSTEM ))
+        {
+            status = eBOOT_ERROR;
+        }
+
+        if ( eRING_BUFFER_OK != ring_buffer_init( &gp_rx_buf, BOOT_IF_RX_BUF_SIZE, &g_buf_attr ))
+        {
+            status = eBOOT_ERROR;
+        }
+
+    #endif // ( 0 == BOOT_IF_CAN_COM_EN )
 
     if ( eFLASH_OK != flash_init())
     {
         status = eBOOT_ERROR;
     }
+
+    // USER CODE END...
+
+    return status;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       De-initialize all used periphery
+*
+* @return       status - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
+boot_status_t boot_if_deinit(void)
+{
+    boot_status_t status = eBOOT_OK;
+
+    // USER CODE BEGIN...
+
+    // De-init gpio
+    gpio_deinit();
+
+    // De-init CAN
+    #if ( 1 == BOOT_IF_CAN_COM_EN )
+        can_deinit( eCAN_SYSTEM );
+    #endif
+
+    // Cli de-init
+    cli_deinit();
+
+    // De-init clocks
+    HAL_RCC_DeInit();
+
+    // De-init HAL
+    HAL_DeInit();
+
+    // Disable systick
+    SysTick->CTRL &= ~SysTick_CTRL_ENABLE_Msk;
 
     // USER CODE END...
 
@@ -137,10 +247,38 @@ boot_status_t boot_if_transmit(const uint8_t * const p_data, const uint16_t size
 
     // USER CODE BEGIN...
 
-    if ( eUART_OK != uart_transmit( eUART_BOOT, p_data, size ))
-    {
-        status = eBOOT_ERROR;
-    }
+    #if ( 0 == BOOT_IF_CAN_COM_EN )
+        #ifdef DEBUG
+            if ( eUART_OK != uart_transmit( eUART_BOOT, p_data, size ))
+            {
+                status = eBOOT_ERROR;
+            }
+        #else
+            if ( eUART_OK != uart_transmit( eUART_DBG, p_data, size ))
+            {
+                status = eBOOT_ERROR;
+            }
+        #endif
+    #else
+
+        // Create CAN message
+        can_msg_t msg =
+        {
+             .id    = BOOT_IF_CAN_MSG_TX_ID,
+             .fd    = true,
+             .dlc   = can_dlc_raw_to_real( size ),
+        };
+
+        // Copy data to message
+        memcpy( &msg.data, p_data, size );
+
+        // Transmit
+        if ( eCAN_OK != can_transmit( eCAN_SYSTEM, &msg ))
+        {
+            status = eBOOT_ERROR;
+        }
+
+    #endif // ( 0 == BOOT_IF_CAN_COM_EN )
 
     // USER CODE END...
 
@@ -163,10 +301,46 @@ boot_status_t boot_if_receive(uint8_t * const p_data)
 
     // USER CODE BEGIN...
 
-    if ( eUART_OK != uart_receive( eUART_BOOT, p_data ))
-    {
-        status = eBOOT_ERROR;
-    }
+    #if ( 0 == BOOT_IF_CAN_COM_EN )
+        #ifdef DEBUG
+            if ( eUART_OK != uart_receive( eUART_BOOT, p_data ))
+            {
+                status = eBOOT_ERROR;
+            }
+        #else
+            if ( eUART_OK != uart_receive( eUART_DBG, p_data ))
+            {
+                status = eBOOT_ERROR;
+            }
+        #endif
+    #else
+
+        can_msg_t msg = {0};
+
+        // Take all received CAN message and make binary stream out of it
+        while( eCAN_OK == can_receive( eCAN_SYSTEM, &msg ))
+        {
+            // Filter CAN messages
+            if ( BOOT_IF_CAN_MSG_RX_ID == msg.id )
+            {
+                // Get size of received data
+                const uint8_t rx_bytes = can_dlc_real_to_raw( msg.dlc );
+
+                // Assemble binary stream
+                for ( uint8_t byte = 0; byte < rx_bytes; byte++ )
+                {
+                    (void) ring_buffer_add( gp_rx_buf, (uint8_t*) &msg.data[byte] );
+                }
+            }
+        }
+
+        // Get data from RX FIFO
+        if ( eRING_BUFFER_OK != ring_buffer_get( gp_rx_buf, (uint8_t*) p_data ))
+        {
+            status = eBOOT_ERROR;
+        }
+
+    #endif // ( 0 == BOOT_IF_CAN_COM_EN )
 
     // USER CODE END...
 
@@ -186,10 +360,26 @@ boot_status_t boot_if_clear_rx_buf(void)
 
     // USER CODE BEGIN...
 
-    if ( eUART_OK != uart_clear_rx_buf( eUART_BOOT ))
-    {
-        status = eBOOT_ERROR;
-    }
+    #if ( 0 == BOOT_IF_CAN_COM_EN )
+        #ifdef DEBUG
+            if ( eUART_OK != uart_clear_rx_buf( eUART_BOOT ))
+            {
+                status = eBOOT_ERROR;
+            }
+        #else
+            if ( eUART_OK != uart_clear_rx_buf( eUART_DBG ))
+            {
+                status = eBOOT_ERROR;
+            }
+        #endif
+    #else
+
+        if ( eCAN_OK != can_clear_rx_buf( eCAN_SYSTEM ))
+        {
+            status = eBOOT_ERROR;
+        }
+
+    #endif // ( 0 == BOOT_IF_CAN_COM_EN )
 
     // USER CODE END...
 
@@ -273,39 +463,6 @@ boot_status_t boot_if_flash_erase(const uint32_t addr, const uint32_t size)
     {
         status = eBOOT_ERROR;
     }
-
-    // USER CODE END...
-
-    return status;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/**
-*       De-initialize all used periphery
-*
-* @return       status - Status of operation
-*/
-////////////////////////////////////////////////////////////////////////////////
-boot_status_t boot_if_deinit(void)
-{
-    boot_status_t status = eBOOT_OK;
-
-    // USER CODE BEGIN...
-
-	// De-init gpio
-	gpio_deinit();
-
-	// Cli de-init
-	cli_deinit();
-
-	// De-init clocks
-	HAL_RCC_DeInit();
-
-	// De-init HAL
-	HAL_DeInit();
-
-	// Disable systick
-	SysTick->CTRL &= ~SysTick_CTRL_ENABLE_Msk;
 
     // USER CODE END...
 

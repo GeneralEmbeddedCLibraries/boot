@@ -78,7 +78,7 @@
 /**
  *      Enable/Disable new firmware version compatibility check
  */
-#define BOOT_CFG_FW_VER_CHECK_EN               ( 0 )
+#define BOOT_CFG_FW_VER_CHECK_EN               ( 1 )
 
 /**
  *      New firmware compatibility value
@@ -87,10 +87,10 @@
  *          version specified in following defines.
  */
 #if ( 1 == BOOT_CFG_FW_VER_CHECK_EN )
-    #define BOOT_CFG_FW_VER_MAJOR               ( 1 )
-    #define BOOT_CFG_FW_VER_MINOR               ( 0 )
-    #define BOOT_CFG_FW_VER_DEVELOP             ( 0 )
-    #define BOOT_CFG_FW_VER_TEST                ( 0 )
+    #define BOOT_CFG_FW_VER_MAJOR               ( 0 )
+    #define BOOT_CFG_FW_VER_MINOR               ( 1 )
+    #define BOOT_CFG_FW_VER_DEVELOP             ( 2 )
+    #define BOOT_CFG_FW_VER_TEST                ( 3 )
 #endif
 
 /**
@@ -99,7 +99,7 @@
  * @note    At prepare command bootloader will check if new firmware app
  *          has higher version than current, if that macro is enabled!
  */
-#define BOOT_CFG_FW_DOWNGRADE_EN                ( 0 )
+#define BOOT_CFG_FW_DOWNGRADE_EN                ( 1 )
 
 /**
  *      Enable/Disable new firmware version compatibility check
@@ -151,6 +151,23 @@
 #define BOOT_CFG_WAIT_AT_STARTUP_MS             ( 100U )
 
 /**
+ *  Bootloader idle timeout time in various states
+ *
+ *  @note   This timeout resets the bootloader upgrade state machine in case
+ *          FW upgrade started and communication activity stops.
+ *
+ *          After that time bootloader state machine enters IDLE state and waits
+ *          for fw upgrade process to re-start.
+ *
+ * @note    Prepare idle timeout shall be bigger than time to erase app region in flash!
+ *
+ *  Unit: ms
+ */
+#define BOOT_CFG_PREPARE_IDLE_TIMEOUT_MS        ( 3000U )
+#define BOOT_CFG_FLASH_IDLE_TIMEOUT_MS          ( 100U )
+#define BOOT_CFG_EXIT_IDLE_TIMEOUT_MS           ( 500U )
+
+/**
  *      Reception buffer size
  *
  *  Unit: byte
@@ -163,7 +180,7 @@
  *
  *  Unit: ms
  */
-#define BOOT_CFG_JUMP_TO_APP_TIMEOUT_MS         ( 20000U )
+#define BOOT_CFG_JUMP_TO_APP_TIMEOUT_MS         ( 5000U )
 
 /**
  *  Get system timetick in 32-bit unsigned integer form
@@ -197,9 +214,6 @@
  */
 #define BOOT_CFG_ASSERT_EN                       ( 1 )
 
-
-
-
 // USER CODE END...
 
 /**
@@ -217,7 +231,9 @@
  *  Debug communication port macros
  */
 #if ( 1 == BOOT_CFG_DEBUG_EN )
+    // USER CODE BEGIN...
     #define BOOT_DBG_PRINT( ... )               ( cli_printf( __VA_ARGS__ ))
+    // USER CODE END...
 #else
     #define BOOT_DBG_PRINT( ... )               { ; }
 
@@ -227,16 +243,12 @@
  *   Assertion macros
  */
 #if ( 1 == BOOT_CFG_ASSERT_EN )
+    // USER CODE BEGIN...
     #define BOOT_ASSERT(x)                      PROJ_CFG_ASSERT(x)
+    // USER CODE END...
 #else
     #define BOOT_ASSERT(x)                      { ; }
 #endif
-
-
-////////////////////////////////////////////////////////////////////////////////
-// Functions
-////////////////////////////////////////////////////////////////////////////////
-
 
 #endif // __BOOT_CFG_H
 

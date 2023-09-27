@@ -74,23 +74,6 @@ BOOT_CFG_STATIC_ASSERT( sizeof(boot_shared_mem_t) == 32U );
 #define BOOT_SHARED_MEM_VER                     ( 1 )
 
 /**
- *  Bootloader idle timeout time in various states
- *
- *  @note   This timeout resets the bootloader upgrade state machine in case
- *          FW upgrade started and communication activity stops.
- *
- *          After that time bootloader state machine enters IDLE state and waits
- *          for fw upgrade process to re-start.
- *
- *          This time shall be bigger than erase time!
- *
- *  Unit: ms
- */
-#define BOOT_CFG_PREPARE_IDLE_TIMEOUT_MS        ( 3000U )
-#define BOOT_CFG_FLASH_IDLE_TIMEOUT_MS          ( 100U )
-#define BOOT_CFG_EXIT_IDLE_TIMEOUT_MS           ( 500U )
-
-/**
  *  Reset vector function pointer
  */
 typedef void (*p_func)(void);
@@ -493,7 +476,7 @@ static void boot_wait(const uint32_t ms)
     {
         // Wait
         while(      ((uint32_t)( BOOT_GET_SYSTICK() - now ) <= ms )
-                &&  ( safety_cnt < 0xFFFFFFFFU ))
+                &&  ( safety_cnt < 0xEFFFFFFFU ))
         {
             // Handle bootloader tasks
             boot_hndl();
