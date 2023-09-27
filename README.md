@@ -63,10 +63,11 @@ Change bootloader configuration for shared memory linker directive according to 
 More info about no-init memory: https://interrupt.memfault.com/blog/noinit-memory 
 
 ## **Validation of new application image**
-Bootloader support up to three different validation criteria for new application before update process can initiate:
+Bootloader support up to four different validation criteria for new application before update process can initiate:
  1. Application size check
  2. Application SW compatibility check
  3. Application HW compatibility check
+ 4. Downgrade protection
 
 ### **1. Application size check**
 Bootloader can check if new application will fit into reserved application flash by defining maximum application size and enabling app size check.
@@ -148,6 +149,19 @@ Hardware compatibility configuration in ***boot_cfg.h***:
 #endif
 ```
 
+### **4. Downgrade protection**
+Bootloader can detect & prevent upgrading with older application as it currently running by enabling *BOOT_CFG_FW_DOWNGRADE_EN*.
+
+Downgrade enable/disable configuration in ***boot_cfg.h***:
+```C
+/**
+ *      Enable/Disable firmware downgrade
+ *
+ * @note    At prepare command bootloader will check if new firmware app
+ *          has higher version than current, if that macro is enabled!
+ */
+#define BOOT_CFG_FW_DOWNGRADE_EN                ( 1 )
+```
 
 ## **Dependencies**
 
@@ -160,8 +174,10 @@ Bootloader expect predefined application binary code as shown in picture bellow.
 Application code must have a ***Application Header*** in order to validate data integritiy of image.
 
 ### **3. Revision module**
-Revision module provides information of application header.
-TODO: Add more info here...
+[Revision module](https://github.com/GeneralEmbeddedCLibraries/revision) provides information of application header.
+
+### **4. FSM module**
+[FSM module](https://github.com/GeneralEmbeddedCLibraries/fsm) provides state transitions and timings spend in each state of bootloader.
 
 
 ## **Limitations**

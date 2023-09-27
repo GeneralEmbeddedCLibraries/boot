@@ -55,12 +55,6 @@ boot_status_t   boot_shared_mem_get_boot_reason     (boot_reason_t * const p_rea
 boot_status_t   boot_shared_mem_set_boot_cnt        (const uint8_t cnt);
 boot_status_t   boot_shared_mem_get_boot_cnt        (uint8_t * const p_cnt);
 
-
-// Events callback
-// TODO: ...
-void boot_validation_failed_cb	(void);
-void boot_enter_app_cb			(void);
-
 #endif // __BOOT_H
 
 ////////////////////////////////////////////////////////////////////////////////

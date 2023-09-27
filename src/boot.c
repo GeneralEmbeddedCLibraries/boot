@@ -484,16 +484,22 @@ static void boot_init_shared_mem(void)
 ////////////////////////////////////////////////////////////////////////////////
 static void boot_wait(const uint32_t ms)
 {
+    uint32_t safety_cnt = 0U;
+
     // Get current ticks
     const uint32_t now = BOOT_GET_SYSTICK();
 
     if ( ms > 0 )
     {
         // Wait
-        while((uint32_t)( BOOT_GET_SYSTICK() - now ) <= ms )
+        while(      ((uint32_t)( BOOT_GET_SYSTICK() - now ) <= ms )
+                &&  ( safety_cnt < 0xFFFFFFFFU ))
         {
             // Handle bootloader tasks
             boot_hndl();
+
+            // Increment safety counter
+            safety_cnt++;
         }
     }
 }
@@ -555,7 +561,7 @@ static boot_msg_status_t boot_fw_ver_check(const uint32_t fw_ver)
         (void) fw_ver;
     #endif
 
-#if ( 1 == BOOT_CFG_FW_DOWNGRADE_EN )
+#if ( 0 == BOOT_CFG_FW_DOWNGRADE_EN )
 
         ver_app_header_t app_header = {0};
 
