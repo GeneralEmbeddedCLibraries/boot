@@ -441,7 +441,10 @@ static void boot_init_shared_mem(void)
     if ( boot_shared_mem_calc_crc((const boot_shared_mem_t *) &g_boot_shared_mem ) == g_boot_shared_mem.crc )
     {
         // Count boot ups
-        g_boot_shared_mem.boot_cnt++;
+        if ( g_boot_shared_mem.boot_cnt < UINT8_MAX )
+        {
+            g_boot_shared_mem.boot_cnt++;
+        }
     }
 
     // CRC error
@@ -615,19 +618,15 @@ static void boot_init_boot_counter(void)
             // Limit reached
             if ( cnt >= BOOT_CFG_BOOT_CNT_LIMIT )
             {
-                // Clear counter
-                cnt = 0U;
-
                 // Stay in bootloader
                 boot_shared_mem_set_boot_reason( eBOOT_REASON_COM );
 
                 // Corrupt app header in order to prevent entering app
                 boot_app_head_erase();
+
+                BOOT_DBG_PRINT( "Boot counts limit reached! Declaring invalid application!" );
             }
         }
-
-        // Increment boot counter
-        cnt++;
 
         // Store boot counter
         (void) boot_shared_mem_set_boot_cnt( cnt );
