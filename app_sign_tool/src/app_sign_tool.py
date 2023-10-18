@@ -123,10 +123,12 @@ def calc_crc8(data):
 
     return crc8 & 0xFF
 
-
-def int_of_string(s):
-    return int(binascii.hexlify(s), 16)
-
+# ===============================================================================
+# @brief  Crypt plaing data to AES with key and initial vector
+#
+# @param[in]    plain_data      - Inputed non-cryptic data
+# @return       crypted_data    - Outputed cryptic data
+# ===============================================================================
 def aes_encode(plain_data):
 
     # AES Key and IV
@@ -134,12 +136,12 @@ def aes_encode(plain_data):
     iv = b"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f"
 
     # Create cipher
-    ctr = Counter.new(128, initial_value=int_of_string(iv))
+    ctr = Counter.new(128, initial_value=int(binascii.hexlify(iv), 16))
     cipher = AES.new(key, AES.MODE_CTR, counter=ctr)
 
     # Encode
     return cipher.encrypt( bytearray( plain_data ))
-
+    
 
 # ===============================================================================
 # @brief  Binary file Class
