@@ -19,6 +19,11 @@ import shutil
 import os
 import struct
 
+import binascii
+from Crypto.Cipher import AES
+from Crypto.Random import get_random_bytes
+from Crypto.Util import Counter
+
 #################################################################################################
 ##  DEFINITIONS
 #################################################################################################
@@ -60,6 +65,7 @@ def arg_parser():
     # Add arguments
     parser.add_argument("-f",   help="Input binary file",               metavar="bin_in",           type=str,   required=True )
     parser.add_argument("-o",   help="Output signed binary file",       metavar="bin_out",          type=str,   required=True )
+    parser.add_argument("-c",   help="Encrypt binary file",             action="store_true",        required=False )
 
     # Get args
     args = parser.parse_args()
@@ -71,7 +77,7 @@ def arg_parser():
     file_in     = args["f"]
     file_out    = args["o"]
 
-    return file_in, file_out
+    return file_in, file_out, args["c"]
 
 # ===============================================================================
 # @brief  Calculate CRC-32
@@ -116,6 +122,24 @@ def calc_crc8(data):
                 crc8 = ( crc8 << 1 );
 
     return crc8 & 0xFF
+
+
+def int_of_string(s):
+    return int(binascii.hexlify(s), 16)
+
+def aes_encode(plain_data):
+
+    # AES Key and IV
+    key = b"\x2b\x7e\x15\x16\x28\xae\xd2\xa6\xab\xf7\x15\x88\x09\xcf\x4f\x3c"
+    iv = b"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f"
+
+    # Create cipher
+    ctr = Counter.new(128, initial_value=int_of_string(iv))
+    cipher = AES.new(key, AES.MODE_CTR, counter=ctr)
+
+    # Encode
+    return cipher.encrypt( bytearray( plain_data ))
+
 
 # ===============================================================================
 # @brief  Binary file Class
@@ -202,7 +226,7 @@ def main():
     print("====================================================================")
 
     # Get arguments
-    file_path_in, file_path_out = arg_parser()
+    file_path_in, file_path_out, crypto_en = arg_parser()
 
     # Check for correct file extension 
     if "bin" != file_path_in.split(".")[-1] or "bin" != file_path_out.split(".")[-1]:
@@ -239,6 +263,20 @@ def main():
 
             # Write application header crc
             out_file.write( APP_HEADER_CRC_ADDR, [app_header_crc] )
+
+            # Encrypt binary image
+            if crypto_en:
+                print( "Crypto is enabled!" )
+
+                # Copy inputed binary file
+                fle_path_crypted_out = file_path_out.split(".")[0] + "_CRYPTED" + "." + file_path_out.split(".")[1]
+                #shutil.copyfile( file_path_out, fle_path_crypted_out )
+                file_crypted_out = open(fle_path_crypted_out, "wb")
+
+                # Open outputed crypted binary file
+                #out_crypted_file = BinFile( fle_path_crypted_out, access=BinFile.READ_WRITE)
+
+                file_crypted_out.write( aes_encode( out_file.read( 0, out_file.size())))
 
             # Success info
             print("SUCCESS: Firmware image successfuly signed!\n")
