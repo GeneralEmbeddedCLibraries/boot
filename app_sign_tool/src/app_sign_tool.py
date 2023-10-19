@@ -29,7 +29,7 @@ from Crypto.Util import Counter
 #################################################################################################
 
 # Script version
-MAIN_SCRIPT_VER     = "V0.1.0"
+MAIN_SCRIPT_VER     = "V0.2.0"
 
 # Tool description
 TOOL_DESCRIPTION = \
@@ -141,7 +141,6 @@ def aes_encode(plain_data):
 
     # Encode
     return cipher.encrypt( bytearray( plain_data ))
-    
 
 # ===============================================================================
 # @brief  Binary file Class
@@ -266,22 +265,23 @@ def main():
             # Write application header crc
             out_file.write( APP_HEADER_CRC_ADDR, [app_header_crc] )
 
+            # Success info
+            print("SUCCESS: Firmware image successfuly signed!")
+
             # Encrypt binary image
             if crypto_en:
-                print( "Crypto is enabled!" )
 
-                # Copy inputed binary file
+                # Create crypted binary file
                 fle_path_crypted_out = file_path_out.split(".")[0] + "_CRYPTED" + "." + file_path_out.split(".")[1]
-                #shutil.copyfile( file_path_out, fle_path_crypted_out )
                 file_crypted_out = open(fle_path_crypted_out, "wb")
 
                 # Open outputed crypted binary file
-                #out_crypted_file = BinFile( fle_path_crypted_out, access=BinFile.READ_WRITE)
-
                 file_crypted_out.write( aes_encode( out_file.read( 0, out_file.size())))
 
-            # Success info
-            print("SUCCESS: Firmware image successfuly signed!\n")
+                # Success info
+                print("SUCCESS: Firmware image successfuly crypted!")    
+
+            print("")           
 
         else:
             print( "ERROR: Application header version not supported!" ) 

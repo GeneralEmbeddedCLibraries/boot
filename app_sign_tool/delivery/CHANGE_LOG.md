@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project/module adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
+## V0.2.0 - 19.10.2023
+
+### Added
+- Added encryption of binary file based on AES CTR mode (use "-c" switch)
+
+---
 ## V0.1.0 - 24.08.2023
 
 ### Notice
@@ -15,6 +21,5 @@ and this project/module adheres to [Semantic Versioning](https://semver.org/spec
 - Application binary size calculation and write to app header
 - Application binary CRC calculation and write to app header
 - Application header CRC calculation and write to app header
-
 
 ---
