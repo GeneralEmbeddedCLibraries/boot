@@ -63,9 +63,9 @@ def arg_parser():
                                         epilog="Enjoy the program!")
 
     # Add arguments
-    parser.add_argument("-f",   help="Input binary file",               metavar="bin_in",           type=str,   required=True )
-    parser.add_argument("-o",   help="Output signed binary file",       metavar="bin_out",          type=str,   required=True )
-    parser.add_argument("-c",   help="Encrypt binary file",             action="store_true",        required=False )
+    parser.add_argument("-f",   help="Input binary file",           metavar="bin_in",           type=str,   required=True )
+    parser.add_argument("-o",   help="Output signed binary file",   metavar="bin_out",          type=str,   required=True )
+    parser.add_argument("-c",   help="Encrypt binary file",         action="store_true",        required=False )
 
     # Get args
     args = parser.parse_args()
@@ -266,20 +266,28 @@ def main():
             out_file.write( APP_HEADER_CRC_ADDR, [app_header_crc] )
 
             # Success info
-            print("SUCCESS: Firmware image successfuly signed!")
+            print("SUCCESS: Firmware image successfully signed!")
 
             # Encrypt binary image
             if crypto_en:
 
+                # Get output file
+                out_file_name, out_file_extension = file_path_out.split("/")[-1].split(".")
+
+                # Get output file path
+                out_file_path = "/".join( file_path_out.split("/")[:len(file_path_out.split("/"))-1]) + "/"
+
                 # Create crypted binary file
-                fle_path_crypted_out = file_path_out.split(".")[-2] + "_CRYPTED" + "." + file_path_out.split(".")[-1]
-                file_crypted_out = open(fle_path_crypted_out, "wb")
+                file_path_crypted_out = out_file_path + out_file_name + "_CRYPTED" + out_file_extension
+                
+                # Open crypted output
+                file_crypted_out = open(file_path_crypted_out, "wb")
 
                 # Open outputed crypted binary file
                 file_crypted_out.write( aes_encode( out_file.read( 0, out_file.size())))
 
                 # Success info
-                print("SUCCESS: Firmware image successfuly crypted!")    
+                print("SUCCESS: Firmware image successfully crypted!")    
 
             print("")           
 
