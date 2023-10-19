@@ -278,7 +278,7 @@ def main():
                 out_file_path = "/".join( file_path_out.split("/")[:len(file_path_out.split("/"))-1]) + "/"
 
                 # Create crypted binary file
-                file_path_crypted_out = out_file_path + out_file_name + "_CRYPTED" + out_file_extension
+                file_path_crypted_out = out_file_path + out_file_name + "_CRYPTED." + out_file_extension
                 
                 # Open crypted output
                 file_crypted_out = open(file_path_crypted_out, "wb")
