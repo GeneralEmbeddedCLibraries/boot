@@ -272,7 +272,7 @@ def main():
             if crypto_en:
 
                 # Create crypted binary file
-                fle_path_crypted_out = file_path_out.split(".")[0] + "_CRYPTED" + "." + file_path_out.split(".")[1]
+                fle_path_crypted_out = file_path_out.split(".")[-2] + "_CRYPTED" + "." + file_path_out.split(".")[-1]
                 file_crypted_out = open(fle_path_crypted_out, "wb")
 
                 # Open outputed crypted binary file
