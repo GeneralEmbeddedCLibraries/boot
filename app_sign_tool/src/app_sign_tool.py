@@ -29,7 +29,7 @@ from Crypto.Util import Counter
 #################################################################################################
 
 # Script version
-MAIN_SCRIPT_VER     = "V0.2.0"
+MAIN_SCRIPT_VER     = "V0.2.1"
 
 # Tool description
 TOOL_DESCRIPTION = \
@@ -132,8 +132,8 @@ def calc_crc8(data):
 def aes_encode(plain_data):
 
     # AES Key and IV
-    key = b"\x2b\x7e\x15\x16\x28\xae\xd2\xa6\xab\xf7\x15\x88\x09\xcf\x4f\x3c"
-    iv = b"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f"
+    key = b"\x1b\x0e\x6c\x90\x34\xda\x00\x32\x33\xdd\x54\x54\x09\xcf\x23\x41"
+    iv = b"\x45\xf2\x34\x12\xa3\x32\x34\xfd\xab\xcc\x1c\xed\x1c\x41\x20\x0f"
 
     # Create cipher
     ctr = Counter.new(128, initial_value=int(binascii.hexlify(iv), 16))

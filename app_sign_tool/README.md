@@ -18,3 +18,10 @@ Example for using signature tool *V0.1.0*, where *${ProjName}.bin* file is input
 ../"mySrc"/middleware/boot/boot/app_sign_tool/delivery/V0.1.0/app_sign_tool__V0_1_0.exe -f ../${ConfigName}/${ProjName}.bin -o ../${ConfigName}/${ProjName}__SIGNED.bin
 ```
 NOTICE: "mySrc" is name of folder where all user sources are places. This is not a requirement, but rather user choise how to organize directory paths. 
+
+## **Using crypto option**
+
+Invoke script with *-c* switch in order to enable encryption of firmware:
+```
+../"mySrc"/middleware/boot/boot/app_sign_tool/delivery/V0.1.0/app_sign_tool__V0_1_0.exe -f ../${ConfigName}/${ProjName}.bin -o ../${ConfigName}/${ProjName}__SIGNED.bin -c
+```
