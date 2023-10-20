@@ -355,7 +355,7 @@ void boot_if_decrypt_reset(void)
 }
 ```
 
-As bootloader expects crypted binary image, plain binary needs to crypted and it must be in same cryptography method. Following code snipped provides compatible encryption for given example:
+As bootloader expects crypted binary image, plain binary needs to be crypted using the same cryptography method as for decrypting. Following Python snipped provides compatible encryption for given example:
 ```Python
 import binascii
 from Crypto.Cipher import AES
@@ -388,7 +388,7 @@ def aes_encode(plain_data):
 ## **Dependencies**
 
 ### **1. Flash memory map**
-Bootloader expect predefined application binary code as shown in picture: 
+Bootloader expect predefined application binary code as shown in picture. Size of bootloader and application are subject to change to suit SW requirements and are used only for presentation purposes.
 
 ![](doc/pic/Flash_MemoryMap.png)
 
