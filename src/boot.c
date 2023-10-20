@@ -651,9 +651,10 @@ static void boot_fsm_idle_hndl(void)
         // Clear flashing data informations
         memset( &g_boot_flashing, 0U, sizeof( g_boot_flashing ));
 
-		// TODO: Add check if crypto is enabled here...
         // Reset decryption engine
-        boot_if_decrypt_reset();
+        #if ( 1 == BOOT_CFG_CRYPTION_EN )
+            boot_if_decrypt_reset();
+        #endif
 
         // Clear flag
         try_to_leave = false;
@@ -909,10 +910,7 @@ void boot_com_prepare_rsp_msg_rcv_cb(const boot_msg_status_t msg_status)
 ////////////////////////////////////////////////////////////////////////////////
 void boot_com_flash_msg_rcv_cb(const uint8_t * const p_data, const uint16_t size)
 {
-            boot_msg_status_t   msg_status          = eBOOT_MSG_OK;
-    static  uint8_t             decrypted_data[128] = {0};
-
-    BOOT_ASSERT( size > 128 );
+    boot_msg_status_t msg_status = eBOOT_MSG_OK;
 
     // In FLASHING state
     if ( eBOOT_STATE_FLASH == boot_get_state())
@@ -920,15 +918,21 @@ void boot_com_flash_msg_rcv_cb(const uint8_t * const p_data, const uint16_t size
         // All data has been flashed
         if ( g_boot_flashing.flashed_bytes < g_boot_flashing.fw_size )
         {
-            // TODO: Add switch if using decryption
+         #if ( 1 == BOOT_CFG_CRYPTION_EN )
+
+            static  uint8_t decrypted_data[128] = {0};
+
+            BOOT_ASSERT( size > 128 );
 
             // Decrypt data
-
             boot_if_decrypt_data( p_data, (uint8_t*) &decrypted_data, size );
 
-            // Flashing OK
-            //if ( eBOOT_OK == boot_if_flash_write( g_boot_flashing.working_addr, size, p_data ))
+            // Flash decrypted data
             if ( eBOOT_OK == boot_if_flash_write( g_boot_flashing.working_addr, size, (uint8_t*) &decrypted_data ))
+          #else
+            // Flash data
+            if ( eBOOT_OK == boot_if_flash_write( g_boot_flashing.working_addr, size, p_data ))
+         #endif
             {
                 // Increment working address
                 g_boot_flashing.working_addr += size;
