@@ -240,7 +240,7 @@ One of the purposes for firmware image cryption is to prevent:
  - Unauthorized firmware modification and loading
 
 Firmware upgrade procedure using crypted image is shown below:
-![](Doc/pic/Firmware_Encryption_Path.png)
+![](doc/pic/Firmware_Encryption_Path.png)
 
 
 In case application image is encrypted bootloader must first decrypt it and then store to the internal flash. To use encrytpion option enable crypto switch in ***boot_cfg.h***:
