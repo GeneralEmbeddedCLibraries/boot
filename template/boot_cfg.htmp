@@ -1,0 +1,264 @@
+// Copyright (c) 2023 Ziga Miklosic
+// All Rights Reserved
+// This software is under MIT licence (https://opensource.org/licenses/MIT)
+////////////////////////////////////////////////////////////////////////////////
+/**
+*@file      boot_cfg.h
+*@brief     Bootloader Configuration
+*@author    Ziga Miklosic
+*@email     ziga.miklosic@gmail.com
+*@date      06.08.2023
+*@version   V0.1.0
+*/
+////////////////////////////////////////////////////////////////////////////////
+/**
+*@addtogroup BOOT_CFG_API
+* @{ <!-- BEGIN GROUP -->
+*
+*/
+////////////////////////////////////////////////////////////////////////////////
+
+#ifndef __BOOT_CFG_H
+#define __BOOT_CFG_H
+
+////////////////////////////////////////////////////////////////////////////////
+// Includes
+////////////////////////////////////////////////////////////////////////////////
+#include <stdlib.h>
+#include <stdint.h>
+#include <stdbool.h>
+
+// USER CODE BEGIN...
+
+#include "config/proj_cfg.h"
+#include <assert.h>
+
+// HAL
+#include "stm32g4xx_hal.h"
+
+// debug port
+#include "middleware/cli/cli/src/cli.h"
+
+// USER CODE END...
+
+////////////////////////////////////////////////////////////////////////////////
+// Definitions
+////////////////////////////////////////////////////////////////////////////////
+
+// USER CODE BEGIN...
+
+/**
+ *      Application header address in flash
+ */
+#define BOOT_CFG_APP_HEAD_ADDR                  ( 0x08008000 )
+
+/**
+ *      Application header size
+ *
+ *  Unit: byte
+ */
+#define BOOT_CFG_APP_HEAD_SIZE                  ( 0x100 )
+
+/**
+ *      Complete (maximum) application size
+ *
+ *  Unit: byte
+ */
+#define BOOT_CFG_APP_SIZE                       (( 512U - 32U ) * 1024U )
+
+/**
+ *      Enable/Disable new firmware size check
+ *
+ * @note    At prepare command bootloader will check if new firmware app
+ *          can be fitted into "BOOT_CFG_APP_SIZE" space, if that macro
+ *          is enabled!
+ */
+#define BOOT_CFG_FW_SIZE_CHECK_EN              ( 1 )
+
+/**
+ *      Enable/Disable new firmware version compatibility check
+ */
+#define BOOT_CFG_FW_VER_CHECK_EN               ( 0 )
+
+/**
+ *      New firmware compatibility value
+ *
+ *  @note   New firmware version is compatible up to
+ *          version specified in following defines.
+ */
+#if ( 1 == BOOT_CFG_FW_VER_CHECK_EN )
+    #define BOOT_CFG_FW_VER_MAJOR               ( 0 )
+    #define BOOT_CFG_FW_VER_MINOR               ( 1 )
+    #define BOOT_CFG_FW_VER_DEVELOP             ( 2 )
+    #define BOOT_CFG_FW_VER_TEST                ( 3 )
+#endif
+
+/**
+ *      Enable/Disable firmware downgrade
+ *
+ * @note    At prepare command bootloader will check if new firmware app
+ *          has higher version than current, if that macro is enabled!
+ */
+#define BOOT_CFG_FW_DOWNGRADE_EN                ( 1 )
+
+/**
+ *      Enable/Disable new firmware version compatibility check
+ */
+#define BOOT_CFG_HW_VER_CHECK_EN                ( 0 )
+
+/**
+ *      New firmware hardware compatibility value
+ *
+ *  @note   New firmware hardware version is compatible up to
+ *          version specified in following defines.
+ */
+#if ( 1 == BOOT_CFG_HW_VER_CHECK_EN )
+    #define BOOT_CFG_HW_VER_MAJOR               ( 1 )
+    #define BOOT_CFG_HW_VER_MINOR               ( 0 )
+    #define BOOT_CFG_HW_VER_DEVELOP             ( 0 )
+    #define BOOT_CFG_HW_VER_TEST                ( 0 )
+#endif
+
+/**
+ *      Enable/Disable boot counting check
+ *
+ * @note    Boot count is safety mechanism build into bootloader
+ *          in order to detect malfunctional application!
+ */
+#define BOOT_CFG_APP_BOOT_CNT_CHECK_EN          ( 0 )
+
+/**
+ *      Boot counts limit
+ *
+ *  @note   After boot count reaches that limit it will
+ *          not enter application! Bootloader will declare
+ *          a faulty app and will request new application!
+ */
+#if ( 1 == BOOT_CFG_APP_BOOT_CNT_CHECK_EN )
+    #define BOOT_CFG_BOOT_CNT_LIMIT               ( 5 )
+#endif
+
+/**
+ *      Bootloader back-door entry timeout
+ *
+ * @note    Wait specified amount of time before entering application
+ *          code at bootloader startup if application is validated OK.
+ *
+ *          To disable waiting set to timeout to 0.
+ *
+ *  Unit: ms
+ */
+#define BOOT_CFG_WAIT_AT_STARTUP_MS             ( 100U )
+
+/**
+ *  Bootloader idle timeout time in various states
+ *
+ *  @note   This timeout resets the bootloader upgrade state machine in case
+ *          FW upgrade started and communication activity stops.
+ *
+ *          After that time bootloader state machine enters IDLE state and waits
+ *          for fw upgrade process to re-start.
+ *
+ * @note    Prepare idle timeout shall be bigger than time to erase app region in flash!
+ *
+ *  Unit: ms
+ */
+#define BOOT_CFG_PREPARE_IDLE_TIMEOUT_MS        ( 3000U )
+#define BOOT_CFG_FLASH_IDLE_TIMEOUT_MS          ( 100U )
+#define BOOT_CFG_EXIT_IDLE_TIMEOUT_MS           ( 500U )
+
+/**
+ *      Reception buffer size
+ *
+ *  Unit: byte
+ */
+#define BOOT_CFG_RX_BUF_SIZE                    ( 256 )
+
+/**
+ *  Jump to application (if valid) if communication idle
+ *  for more than this value of timeout
+ *
+ *  Unit: ms
+ */
+#define BOOT_CFG_JUMP_TO_APP_TIMEOUT_MS         ( 5000U )
+
+/**
+ *  Get system timetick in 32-bit unsigned integer form
+ *
+ *  Unit: ms
+ */
+#define BOOT_GET_SYSTICK()                      ((uint32_t) HAL_GetTick() )
+
+/**
+ *  Static assert
+ */
+#define BOOT_CFG_STATIC_ASSERT(x)                _Static_assert(x)
+
+/**
+ *  Weak compiler directive
+ */
+#define __BOOT_CFG_WEAK__                        __attribute__((weak))
+
+/**
+ *  Shared memory section directive for linker
+ */
+#define __BOOT_CFG_SHARED_MEM__                	__attribute__((section(".shared_mem")))
+
+/**
+ *  Enable/Disable firmware binary encryption
+ */
+#define BOOT_CFG_CRYPTION_EN                    ( 1 )
+
+/**
+ *      Enable/Disable debug mode
+ */
+#define BOOT_CFG_DEBUG_EN                       ( 1 )
+
+/**
+ *      Enable/Disable assertions
+ */
+#define BOOT_CFG_ASSERT_EN                      ( 1 )
+
+// USER CODE END...
+
+/**
+ *  Disable debug mode and asserts in release mode
+ */
+#ifndef DEBUG
+    #undef BOOT_CFG_DEBUG_EN
+    #define BOOT_CFG_DEBUG_EN 0
+
+    #undef BOOT_CFG_ASSERT_EN
+    #define BOOT_CFG_ASSERT_EN 0
+#endif
+
+/**
+ *  Debug communication port macros
+ */
+#if ( 1 == BOOT_CFG_DEBUG_EN )
+    // USER CODE BEGIN...
+    #define BOOT_DBG_PRINT( ... )               ( cli_printf( __VA_ARGS__ ))
+    // USER CODE END...
+#else
+    #define BOOT_DBG_PRINT( ... )               { ; }
+
+#endif
+
+/**
+ *   Assertion macros
+ */
+#if ( 1 == BOOT_CFG_ASSERT_EN )
+    // USER CODE BEGIN...
+    #define BOOT_ASSERT(x)                      PROJ_CFG_ASSERT(x)
+    // USER CODE END...
+#else
+    #define BOOT_ASSERT(x)                      { ; }
+#endif
+
+#endif // __BOOT_CFG_H
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+* @} <!-- END GROUP -->
+*/
+////////////////////////////////////////////////////////////////////////////////
