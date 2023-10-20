@@ -46,6 +46,7 @@
 // Middleware
 #include "middleware/cli/cli/src/cli.h"
 #include "middleware/ring_buffer/src/ring_buffer.h"
+#include "cmox_crypto.h"
 
 // USER INCLUDE END...
 
@@ -83,6 +84,14 @@
 
 #endif // ( 1 == BOOT_IF_CAN_COM_EN )
 
+/**
+ *      Enable/Disable cryption
+ *
+ *  @note   In debug mode, CMOX (encryption lib) is to big to be fit into boot flash!
+ */
+#define BOOT_IF_CRYPTION_EN                 ( 1 )
+
+
 // USER CODE END...
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -110,6 +119,26 @@
 
 #endif
 
+/**
+ *  AES CTR context handle
+ */
+static cmox_ctr_handle_t g_ctr_ctx = {0};
+
+/**
+ *  AES cipher context handle
+ */
+static cmox_cipher_handle_t * gp_cipher_ctx = NULL;
+
+/**
+ *  AES CTR Encryption Key
+ */
+static const uint8_t gu8_key[] = { 0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c };
+
+/**
+ *  AES CTR Initial Vector (IV) Key
+ */
+static const uint8_t gu8_iv[] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
+
 // USER CODE END...
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -118,6 +147,8 @@
 
 // USER CODE BEGIN...
 
+static boot_status_t bool_if_crypto_init(void);
+
 // USER CODE END...
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -125,6 +156,53 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // USER CODE BEGIN...
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Initialize cryptographic library
+*
+* @return       status  - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
+static boot_status_t bool_if_crypto_init(void)
+{
+    boot_status_t status = eBOOT_OK;
+
+    // Initialize cryptographic library
+    if ( CMOX_INIT_SUCCESS != cmox_initialize( NULL ))
+    {
+        status = eBOOT_ERROR;
+    }
+
+    // Construct a cipher context
+    gp_cipher_ctx = cmox_ctr_construct( &g_ctr_ctx, CMOX_AESFAST_CTR_DEC );
+
+    // Check for construction creation
+    if ( NULL == gp_cipher_ctx )
+    {
+        status = eBOOT_ERROR;
+    }
+
+    // Initialize the cipher context
+    if ( CMOX_CIPHER_SUCCESS != cmox_cipher_init( gp_cipher_ctx ))
+    {
+        status = eBOOT_ERROR;
+    }
+
+    // Setup decryption key
+    if ( CMOX_CIPHER_SUCCESS != cmox_cipher_setKey( gp_cipher_ctx, gu8_key, sizeof( gu8_key )))
+    {
+        status = eBOOT_ERROR;
+    }
+
+    // Setup Initilization Vector (IV)
+    if ( CMOX_CIPHER_SUCCESS != cmox_cipher_setIV( gp_cipher_ctx, gu8_iv, sizeof( gu8_iv )))
+    {
+        status = eBOOT_ERROR;
+    }
+
+    return status;
+}
 
 // USER CODE END...
 
@@ -182,6 +260,10 @@ boot_status_t boot_if_init(void)
 
     #endif // ( 0 == BOOT_IF_CAN_COM_EN )
 
+    // Initialize cryptographic lib
+    status |= bool_if_crypto_init();
+
+    // Init flash driver
     if ( eFLASH_OK != flash_init())
     {
         status = eBOOT_ERROR;
@@ -204,6 +286,16 @@ boot_status_t boot_if_deinit(void)
     boot_status_t status = eBOOT_OK;
 
     // USER CODE BEGIN...
+
+    #if ( 1 == BOOT_IF_CRYPTION_EN)
+
+        // De-Initialize cryptographic library
+        if ( CMOX_INIT_SUCCESS != cmox_finalize( NULL ))
+        {
+            status = eBOOT_ERROR;
+        }
+
+    #endif
 
     // De-init gpio
     gpio_deinit();
@@ -468,6 +560,46 @@ boot_status_t boot_if_flash_erase(const uint32_t addr, const uint32_t size)
 
     return status;
 }
+
+#if ( 1 == BOOT_CFG_CRYPTION_EN )
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /**
+    *       Decrypt flash data received over communication
+    *
+    * @param[in]    p_crypt_data    - Pointer to crypted flash data
+    * @param[out]   p_decrypt_data  - Pointer to decrypted flash data
+    * @param[in]    size            - Size of data to decrypt
+    * @return       void
+    */
+    ////////////////////////////////////////////////////////////////////////////////
+    void boot_if_decrypt_data(const uint8_t * const p_crypt_data, uint8_t * const p_decrypt_data, const uint32_t size)
+    {
+        // USER CODE BEGIN...
+
+        (void) cmox_cipher_append( gp_cipher_ctx, p_crypt_data, size, p_decrypt_data, NULL );
+
+        // USER CODE END...
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /**
+    *       Reset cryto engine
+    *
+    * @return       void
+    */
+    ////////////////////////////////////////////////////////////////////////////////
+    void boot_if_decrypt_reset(void)
+    {
+        // USER CODE BEGIN...
+
+        //Cleanup the handle
+        (void) cmox_cipher_cleanup( gp_cipher_ctx );
+
+        // USER CODE END...
+    }
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /**

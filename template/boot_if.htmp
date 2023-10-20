@@ -29,6 +29,7 @@
 #include <stdbool.h>
 
 #include "boot/src/boot_types.h"
+#include "boot_cfg.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 // Definitions
@@ -49,7 +50,10 @@ boot_status_t   boot_if_flash_write 	(const uint32_t addr, const uint32_t size, 
 boot_status_t   boot_if_flash_read   	(const uint32_t addr, const uint32_t size, uint8_t * const p_data);
 boot_status_t   boot_if_flash_erase   	(const uint32_t addr, const uint32_t size);
 
-
+#if ( 1 == BOOT_CFG_CRYPTION_EN )
+    void boot_if_decrypt_data   (const uint8_t * const p_crypt_data, uint8_t * const p_decrypt_data, const uint32_t size);
+    void boot_if_decrypt_reset  (void);
+#endif
 
 #endif // __BOOT_IF_H
 

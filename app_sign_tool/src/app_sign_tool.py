@@ -19,12 +19,17 @@ import shutil
 import os
 import struct
 
+import binascii
+from Crypto.Cipher import AES
+from Crypto.Random import get_random_bytes
+from Crypto.Util import Counter
+
 #################################################################################################
 ##  DEFINITIONS
 #################################################################################################
 
 # Script version
-MAIN_SCRIPT_VER     = "V0.1.0"
+MAIN_SCRIPT_VER     = "V0.2.0"
 
 # Tool description
 TOOL_DESCRIPTION = \
@@ -58,8 +63,9 @@ def arg_parser():
                                         epilog="Enjoy the program!")
 
     # Add arguments
-    parser.add_argument("-f",   help="Input binary file",               metavar="bin_in",           type=str,   required=True )
-    parser.add_argument("-o",   help="Output signed binary file",       metavar="bin_out",          type=str,   required=True )
+    parser.add_argument("-f",   help="Input binary file",           metavar="bin_in",           type=str,   required=True )
+    parser.add_argument("-o",   help="Output signed binary file",   metavar="bin_out",          type=str,   required=True )
+    parser.add_argument("-c",   help="Encrypt binary file",         action="store_true",        required=False )
 
     # Get args
     args = parser.parse_args()
@@ -71,7 +77,7 @@ def arg_parser():
     file_in     = args["f"]
     file_out    = args["o"]
 
-    return file_in, file_out
+    return file_in, file_out, args["c"]
 
 # ===============================================================================
 # @brief  Calculate CRC-32
@@ -116,6 +122,25 @@ def calc_crc8(data):
                 crc8 = ( crc8 << 1 );
 
     return crc8 & 0xFF
+
+# ===============================================================================
+# @brief  Crypt plaing data to AES with key and initial vector
+#
+# @param[in]    plain_data      - Inputed non-cryptic data
+# @return       crypted_data    - Outputed cryptic data
+# ===============================================================================
+def aes_encode(plain_data):
+
+    # AES Key and IV
+    key = b"\x2b\x7e\x15\x16\x28\xae\xd2\xa6\xab\xf7\x15\x88\x09\xcf\x4f\x3c"
+    iv = b"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f"
+
+    # Create cipher
+    ctr = Counter.new(128, initial_value=int(binascii.hexlify(iv), 16))
+    cipher = AES.new(key, AES.MODE_CTR, counter=ctr)
+
+    # Encode
+    return cipher.encrypt( bytearray( plain_data ))
 
 # ===============================================================================
 # @brief  Binary file Class
@@ -202,7 +227,7 @@ def main():
     print("====================================================================")
 
     # Get arguments
-    file_path_in, file_path_out = arg_parser()
+    file_path_in, file_path_out, crypto_en = arg_parser()
 
     # Check for correct file extension 
     if "bin" != file_path_in.split(".")[-1] or "bin" != file_path_out.split(".")[-1]:
@@ -241,7 +266,30 @@ def main():
             out_file.write( APP_HEADER_CRC_ADDR, [app_header_crc] )
 
             # Success info
-            print("SUCCESS: Firmware image successfuly signed!\n")
+            print("SUCCESS: Firmware image successfully signed!")
+
+            # Encrypt binary image
+            if crypto_en:
+
+                # Get output file
+                out_file_name, out_file_extension = file_path_out.split("/")[-1].split(".")
+
+                # Get output file path
+                out_file_path = "/".join( file_path_out.split("/")[:len(file_path_out.split("/"))-1]) + "/"
+
+                # Create crypted binary file
+                file_path_crypted_out = out_file_path + out_file_name + "_CRYPTED." + out_file_extension
+                
+                # Open crypted output
+                file_crypted_out = open(file_path_crypted_out, "wb")
+
+                # Open outputed crypted binary file
+                file_crypted_out.write( aes_encode( out_file.read( 0, out_file.size())))
+
+                # Success info
+                print("SUCCESS: Firmware image successfully crypted!")    
+
+            print("")           
 
         else:
             print( "ERROR: Application header version not supported!" ) 
