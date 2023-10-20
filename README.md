@@ -243,7 +243,7 @@ Firmware upgrade procedure using crypted image is shown below:
 ![](doc/pic/Firmware_Encryption_Path.png)
 
 
-In case application image is encrypted bootloader must first decrypt it and then store to the internal flash. To use encrytpion option enable crypto switch in ***boot_cfg.h***:
+In case application image is encrypted, bootloader must first decrypt it and then store to the internal flash. To use encrytpion option enable crypto switch in ***boot_cfg.h***:
 ```C
 /**
  *  Enable/Disable firmware binary encryption
