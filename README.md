@@ -234,6 +234,156 @@ Configuration of idle timeout in ***boot_cfg.h***:
 #define BOOT_CFG_JUMP_TO_APP_TIMEOUT_MS         ( 5000U )
 ```
 
+## **Application firmware image cryptography**
+In case application image is encrypted bootloader must first decrypt it and then store to the internal flash. To use encrytpion option enable crypto switch in ***boot_cfg.h***:
+```C
+/**
+ *  Enable/Disable firmware binary encryption
+ */
+#define BOOT_CFG_CRYPTION_EN                    ( 1 )
+```
+
+After that, cryptographic library needs to be initilized and that must be done in ***boot_if.c***. Example of using [STM32 CMOX](https://wiki.st.com/stm32mcu/wiki/Security:Introduction_to_the_cryptographic_library_with_STM32):
+```C
+/**
+ *  AES CTR context handle
+ */
+static cmox_ctr_handle_t g_ctr_ctx = {0};
+
+/**
+ *  AES cipher context handle
+ */
+static cmox_cipher_handle_t * gp_cipher_ctx = NULL;
+
+/**
+ *  AES CTR Encryption Key
+ */
+static const uint8_t gu8_key[] = { 0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c };
+
+/**
+ *  AES CTR Initial Vector (IV) Key
+ */
+static const uint8_t gu8_iv[] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Initialize cryptographic library
+*
+* @return       status  - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
+static boot_status_t bool_if_crypto_init(void)
+{
+  boot_status_t status = eBOOT_OK;
+
+  // Initialize cryptographic library
+  if ( CMOX_INIT_SUCCESS != cmox_initialize( NULL ))
+  {
+      status = eBOOT_ERROR;
+  }
+
+  // Construct a cipher context
+  gp_cipher_ctx = cmox_ctr_construct( &g_ctr_ctx, CMOX_AESFAST_CTR_DEC );
+
+  // Check for construction creation
+  if ( NULL == gp_cipher_ctx )
+  {
+      status = eBOOT_ERROR;
+  }
+
+  // Initialize the cipher context
+  if ( CMOX_CIPHER_SUCCESS != cmox_cipher_init( gp_cipher_ctx ))
+  {
+      status = eBOOT_ERROR;
+  }
+
+  // Setup decryption key
+  if ( CMOX_CIPHER_SUCCESS != cmox_cipher_setKey( gp_cipher_ctx, gu8_key, sizeof( gu8_key )))
+  {
+      status = eBOOT_ERROR;
+  }
+
+  // Setup Initilization Vector (IV)
+  if ( CMOX_CIPHER_SUCCESS != cmox_cipher_setIV( gp_cipher_ctx, gu8_iv, sizeof( gu8_iv )))
+  {
+      status = eBOOT_ERROR;
+  }
+
+  return status;
+}
+```
+
+Next decryption function needs to be implemented inside ***boot_if.c***. Example:
+```C
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Decrypt flash data received over communication
+*
+* @param[in]    p_crypt_data    - Pointer to crypted flash data
+* @param[out]   p_decrypt_data  - Pointer to decrypted flash data
+* @param[in]    size            - Size of data to decrypt
+* @return       void
+*/
+////////////////////////////////////////////////////////////////////////////////
+void boot_if_decrypt_data(const uint8_t * const p_crypt_data, uint8_t * const p_decrypt_data, const uint32_t size)
+{
+    // USER CODE BEGIN...
+
+    (void) cmox_cipher_append( gp_cipher_ctx, p_crypt_data, size, p_decrypt_data, NULL );
+
+    // USER CODE END...
+}
+```
+
+And finaly, cryptographic library reset function must be implemented, also in ***boot_if.c***. Example:
+```C
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Reset cryto engine
+*
+* @return       void
+*/
+////////////////////////////////////////////////////////////////////////////////
+void boot_if_decrypt_reset(void)
+{
+    // USER CODE BEGIN...
+
+    //Cleanup the handle
+    (void) cmox_cipher_cleanup( gp_cipher_ctx );
+
+    // USER CODE END...
+}
+```
+
+As bootloader expects crypted binary image, plain binary needs to crypted and it must be in same cryptography method. Following code snipped provides compatible encryption for given example:
+```Python
+import binascii
+from Crypto.Cipher import AES
+from Crypto.Random import get_random_bytes
+from Crypto.Util import Counter
+
+# ===============================================================================
+# @brief  Crypt plaing data to AES with key and initial vector
+#
+# @param[in]    plain_data      - Inputed non-cryptic data
+# @return       crypted_data    - Outputed cryptic data
+# ===============================================================================
+def aes_encode(plain_data):
+
+    # AES Key and IV
+    key = b"\x2b\x7e\x15\x16\x28\xae\xd2\xa6\xab\xf7\x15\x88\x09\xcf\x4f\x3c"
+    iv = b"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f"
+
+    # Create cipher
+    ctr = Counter.new(128, initial_value=int(binascii.hexlify(iv), 16))
+    cipher = AES.new(key, AES.MODE_CTR, counter=ctr)
+
+    # Encode
+    return cipher.encrypt( bytearray( plain_data ))
+```
+
+**NOTICE: Don't forget to change AES Key and Initial Vector (IV) for your end application!**
+
 
 ## **Dependencies**
 
@@ -250,7 +400,6 @@ Application code must have a ***Application Header*** in order to validate data 
 
 ### **4. FSM module**
 [FSM module](https://github.com/GeneralEmbeddedCLibraries/fsm) provides state transitions and timings spend in each state of bootloader.
-
 
 ## **Limitations**
 
@@ -316,6 +465,7 @@ root/middleware/boot/boot/"module_space"
 | **BOOT_CFG_STATIC_ASSERT**                | Static assert definition |
 | **__BOOT_CFG_WEAK__**                     | Weak compiler directive |
 | **__BOOT_CFG_SHARED_MEM__**               | Shared memory section directive for linker |
+| **BOOT_CFG_CRYPTION_EN**                  | Enable/Disable firmware binary encryption |
 | **BOOT_CFG_DEBUG_EN**                     | Enable/Disable debug mode |
 | **BOOT_CFG_ASSERT_EN**                    | Enable/Disable assertions |
 
