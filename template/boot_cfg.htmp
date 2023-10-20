@@ -78,7 +78,7 @@
 /**
  *      Enable/Disable new firmware version compatibility check
  */
-#define BOOT_CFG_FW_VER_CHECK_EN               ( 1 )
+#define BOOT_CFG_FW_VER_CHECK_EN               ( 0 )
 
 /**
  *      New firmware compatibility value
@@ -125,7 +125,7 @@
  * @note    Boot count is safety mechanism build into bootloader
  *          in order to detect malfunctional application!
  */
-#define BOOT_CFG_APP_BOOT_CNT_CHECK_EN          ( 1 )
+#define BOOT_CFG_APP_BOOT_CNT_CHECK_EN          ( 0 )
 
 /**
  *      Boot counts limit
@@ -205,14 +205,19 @@
 #define __BOOT_CFG_SHARED_MEM__                	__attribute__((section(".shared_mem")))
 
 /**
+ *  Enable/Disable firmware binary encryption
+ */
+#define BOOT_CFG_CRYPTION_EN                    ( 1 )
+
+/**
  *      Enable/Disable debug mode
  */
-#define BOOT_CFG_DEBUG_EN                        ( 1 )
+#define BOOT_CFG_DEBUG_EN                       ( 1 )
 
 /**
  *      Enable/Disable assertions
  */
-#define BOOT_CFG_ASSERT_EN                       ( 1 )
+#define BOOT_CFG_ASSERT_EN                      ( 1 )
 
 // USER CODE END...
 
