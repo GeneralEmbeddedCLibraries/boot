@@ -4,9 +4,9 @@
 ##
 ## @file:       app_sign_tool.py
 ## @brief:      This script fills up application header informations
-## @date:		22.08.2023
+## @date:		22.12.2023
 ## @author:		Ziga Miklosic
-## @version:    V0.1.0
+## @version:    V0.3.0
 ##
 #################################################################################################
 
@@ -29,7 +29,7 @@ from Crypto.Util import Counter
 #################################################################################################
 
 # Script version
-MAIN_SCRIPT_VER     = "V0.2.1"
+MAIN_SCRIPT_VER     = "V0.3.0"
 
 # Tool description
 TOOL_DESCRIPTION = \
@@ -261,9 +261,8 @@ def main():
             # Count application size
             app_size = out_file.size()
 
+            # Is pad enable
             if PAD_ENABLE:
-
-                print( "Non-padded app size: %s (0x%X)" % ( app_size, app_size ))
 
                 # Calculate number of bytes need to be padded
                 num_of_bytes_to_pad = ( PAD_BLOCK_SIZE_BYTE - ( app_size % PAD_BLOCK_SIZE_BYTE ))
@@ -277,11 +276,7 @@ def main():
                     # Count application size
                     app_size = out_file.size()
 
-                # Padd to 64 bytes
-                print( "Padded app size: %s (0x%X)" % ( app_size, app_size ))
-                print( "num_of_bytes_to_pad: %s" % num_of_bytes_to_pad )
-
-
+                    print("INFO: Binary padded with %d byte!" % num_of_bytes_to_pad )
 
             # Calculate application CRC
             # NOTE: Start calculation after application header!

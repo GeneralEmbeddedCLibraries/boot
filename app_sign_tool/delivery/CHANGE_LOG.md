@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project/module adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
+## V0.3.0 - 22.12.2023
+
+### Added 
+ - Pading binary image to configured block size
+
+---
 ## V0.2.1 - 20.10.2023
 
 ### Changed
