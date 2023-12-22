@@ -9,6 +9,7 @@ and this project/module adheres to [Semantic Versioning](https://semver.org/spec
 
 ### Added 
  - Pading binary image to configured block size
+ - Pip requirements
 
 ---
 ## V0.2.1 - 20.10.2023
