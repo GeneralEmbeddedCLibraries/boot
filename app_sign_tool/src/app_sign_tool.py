@@ -47,6 +47,19 @@ APP_HEADER_CRC_ADDR             = 0xFF
 # Application header size in bytes
 APP_HEADER_SIZE_BYTE            = 0x100
 
+# Enable padding
+PAD_ENABLE                      = True
+
+# Pad value
+PAD_VALUE                       = 0x00
+
+# Pad block
+# Size of block to be padded. If application binary is not
+# wihtin that block size it will be padded to be multiple of
+# pad block size.
+PAD_BLOCK_SIZE_BYTE             = 64 #bytes 
+
+
 #################################################################################################
 ##  FUNCTIONS
 #################################################################################################
@@ -247,6 +260,28 @@ def main():
 
             # Count application size
             app_size = out_file.size()
+
+            if PAD_ENABLE:
+
+                print( "Non-padded app size: %s (0x%X)" % ( app_size, app_size ))
+
+                # Calculate number of bytes need to be padded
+                num_of_bytes_to_pad = ( PAD_BLOCK_SIZE_BYTE - ( app_size % PAD_BLOCK_SIZE_BYTE ))
+
+                # Binary needs to be padded
+                if ( num_of_bytes_to_pad < PAD_BLOCK_SIZE_BYTE ):
+
+                    # Pad file
+                    out_file.write( app_size, [ PAD_VALUE for _ in range( num_of_bytes_to_pad ) ])
+
+                    # Count application size
+                    app_size = out_file.size()
+
+                # Padd to 64 bytes
+                print( "Padded app size: %s (0x%X)" % ( app_size, app_size ))
+                print( "num_of_bytes_to_pad: %s" % num_of_bytes_to_pad )
+
+
 
             # Calculate application CRC
             # NOTE: Start calculation after application header!
