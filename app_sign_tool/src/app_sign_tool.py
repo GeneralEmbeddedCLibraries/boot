@@ -29,23 +29,23 @@ from Crypto.Util import Counter
 #################################################################################################
 
 # Script version
-MAIN_SCRIPT_VER     = "V0.3.0"
+MAIN_SCRIPT_VER     = "V0.4.0"
 
 # Tool description
 TOOL_DESCRIPTION = \
 "Firmware Application Signature Tool %s" % MAIN_SCRIPT_VER
 
 # Expected application header version
-APP_HEADER_VER_EXPECTED         = 1
+APP_HEADER_VER_EXPECTED         = 2
 
 # Application header addresses
 APP_HEADER_APP_SIZE_ADDR        = 0x08
 APP_HEADER_APP_CRC_ADDR         = 0x0C
-APP_HEADER_VER_ADDR             = 0xFE
-APP_HEADER_CRC_ADDR             = 0xFF
+APP_HEADER_VER_ADDR             = 0x1FE
+APP_HEADER_CRC_ADDR             = 0x1FF
 
 # Application header size in bytes
-APP_HEADER_SIZE_BYTE            = 0x100
+APP_HEADER_SIZE_BYTE            = 0x200 #512 bytes
 
 # Enable padding
 PAD_ENABLE                      = True
