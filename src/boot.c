@@ -334,8 +334,8 @@ static uint32_t boot_fw_image_calc_crc(const uint32_t size)
 ////////////////////////////////////////////////////////////////////////////////
 static boot_status_t boot_fw_image_validate(void)
 {
-	boot_status_t 	 status 	= eBOOT_OK;
-    ver_app_header_t app_header = {0};
+    static  ver_app_header_t app_header = {0};
+            boot_status_t    status     = eBOOT_OK;
 
     // Read application header
     status = boot_app_head_read( &app_header );
