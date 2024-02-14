@@ -920,9 +920,9 @@ void boot_com_flash_msg_rcv_cb(const uint8_t * const p_data, const uint16_t size
         {
          #if ( 1 == BOOT_CFG_CRYPTION_EN )
 
-            static  uint8_t decrypted_data[128] = {0};
+            static uint8_t decrypted_data[BOOT_CFG_DATA_PAYLOAD_SIZE] = {0};
 
-            BOOT_ASSERT( size < 128 );
+            BOOT_ASSERT( size < BOOT_CFG_DATA_PAYLOAD_SIZE );
 
             // Decrypt data
             boot_if_decrypt_data( p_data, (uint8_t*) &decrypted_data, size );
