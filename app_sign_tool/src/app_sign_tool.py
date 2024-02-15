@@ -4,9 +4,9 @@
 ##
 ## @file:       app_sign_tool.py
 ## @brief:      This script fills up application header informations
-## @date:		22.08.2023
+## @date:		22.12.2023
 ## @author:		Ziga Miklosic
-## @version:    V0.1.0
+## @version:    V0.3.0
 ##
 #################################################################################################
 
@@ -29,23 +29,36 @@ from Crypto.Util import Counter
 #################################################################################################
 
 # Script version
-MAIN_SCRIPT_VER     = "V0.2.1"
+MAIN_SCRIPT_VER     = "V0.4.0"
 
 # Tool description
 TOOL_DESCRIPTION = \
 "Firmware Application Signature Tool %s" % MAIN_SCRIPT_VER
 
 # Expected application header version
-APP_HEADER_VER_EXPECTED         = 1
+APP_HEADER_VER_EXPECTED         = 2
 
 # Application header addresses
 APP_HEADER_APP_SIZE_ADDR        = 0x08
 APP_HEADER_APP_CRC_ADDR         = 0x0C
-APP_HEADER_VER_ADDR             = 0xFE
-APP_HEADER_CRC_ADDR             = 0xFF
+APP_HEADER_VER_ADDR             = 0x1FE
+APP_HEADER_CRC_ADDR             = 0x1FF
 
 # Application header size in bytes
-APP_HEADER_SIZE_BYTE            = 0x100
+APP_HEADER_SIZE_BYTE            = 0x200 #512 bytes
+
+# Enable padding
+PAD_ENABLE                      = True
+
+# Pad value
+PAD_VALUE                       = 0x00
+
+# Pad block
+# Size of block to be padded. If application binary is not
+# wihtin that block size it will be padded to be multiple of
+# pad block size.
+PAD_BLOCK_SIZE_BYTE             = 64 #bytes 
+
 
 #################################################################################################
 ##  FUNCTIONS
@@ -247,6 +260,23 @@ def main():
 
             # Count application size
             app_size = out_file.size()
+
+            # Is pad enable
+            if PAD_ENABLE:
+
+                # Calculate number of bytes need to be padded
+                num_of_bytes_to_pad = ( PAD_BLOCK_SIZE_BYTE - ( app_size % PAD_BLOCK_SIZE_BYTE ))
+
+                # Binary needs to be padded
+                if ( num_of_bytes_to_pad < PAD_BLOCK_SIZE_BYTE ):
+
+                    # Pad file
+                    out_file.write( app_size, [ PAD_VALUE for _ in range( num_of_bytes_to_pad ) ])
+
+                    # Count application size
+                    app_size = out_file.size()
+
+                    print("INFO: Binary padded with %d byte!" % num_of_bytes_to_pad )
 
             # Calculate application CRC
             # NOTE: Start calculation after application header!

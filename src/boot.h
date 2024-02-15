@@ -1,4 +1,4 @@
-// Copyright (c) 2023 Ziga Miklosic
+// Copyright (c) 2024 Ziga Miklosic
 // All Rights Reserved
 // This software is under MIT licence (https://opensource.org/licenses/MIT)
 ////////////////////////////////////////////////////////////////////////////////
@@ -7,8 +7,8 @@
 *@brief     Bootloader API
 *@author    Ziga Miklosic
 *@email     ziga.miklosic@gmail.com
-*@date      06.08.2023
-*@version   V0.1.0
+*@date      15.02.2024
+*@version   V0.2.0
 */
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -39,7 +39,7 @@
  *  Module version
  */
 #define BOOT_VER_MAJOR          ( 0 )
-#define BOOT_VER_MINOR          ( 1 )
+#define BOOT_VER_MINOR          ( 2 )
 #define BOOT_VER_DEVELOP        ( 0 )
 
 ////////////////////////////////////////////////////////////////////////////////

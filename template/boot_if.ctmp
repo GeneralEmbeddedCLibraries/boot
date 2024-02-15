@@ -1,4 +1,4 @@
-// Copyright (c) 2023 Ziga Miklosic
+// Copyright (c) 2024 Ziga Miklosic
 // All Rights Reserved
 // This software is under MIT licence (https://opensource.org/licenses/MIT)
 ////////////////////////////////////////////////////////////////////////////////
@@ -7,8 +7,8 @@
 *@brief     Bootloader Interface
 *@author    Ziga Miklosic
 *@email     ziga.miklosic@gmail.com
-*@date      10.08.2023
-*@version   V0.1.0
+*@date      15.02.2024
+*@version   V0.2.0
 */
 ////////////////////////////////////////////////////////////////////////////////
 /*!
@@ -39,9 +39,10 @@
 
 // Drivers
 #include "drivers/peripheral/gpio/gpio/src/gpio.h"
-#include "drivers/peripheral/uart/uart/src/uart.h"
 #include "drivers/peripheral/flash/flash/src/flash.h"
-#include "drivers/peripheral/can/can/src/can.h"
+
+// Interface
+#include "interface/rs485/rs485.h"
 
 // Middleware
 #include "middleware/cli/cli/src/cli.h"
@@ -56,42 +57,6 @@
 
 // USER CODE BEGIN...
 
-/**
- *  Enable/Disable bootloader interface via CAN
- */
-#define BOOT_IF_CAN_COM_EN                  ( 1 )
-
-#if ( 1 == BOOT_IF_CAN_COM_EN )
-
-    /**
-     *  Reception buffer size in bytes
-     */
-    #define BOOT_IF_RX_BUF_SIZE             ( 512 )
-
-    /**
-     *  CAN Tx message ID
-     *
-     *  @note   According to "VendingMachine_CANMatrix.xlsx" specifications.
-     */
-    #define BOOT_IF_CAN_MSG_TX_ID           ( 0x400 )
-
-    /**
-     *  CAN Rx message ID
-     *
-     *  @note   According to "VendingMachine_CANMatrix.xlsx" specifications.
-     */
-    #define BOOT_IF_CAN_MSG_RX_ID           ( 0x401 )
-
-#endif // ( 1 == BOOT_IF_CAN_COM_EN )
-
-/**
- *      Enable/Disable cryption
- *
- *  @note   In debug mode, CMOX (encryption lib) is to big to be fit into boot flash!
- */
-#define BOOT_IF_CRYPTION_EN                 ( 1 )
-
-
 // USER CODE END...
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -100,44 +65,29 @@
 
 // USER CODE BEGIN...
 
-#if ( 1 == BOOT_IF_CAN_COM_EN )
+#if ( 1 == BOOT_CFG_CRYPTION_EN)
 
     /**
-     *  CAN reception buffer by byte
+     *  AES CTR context handle
      */
-    static p_ring_buffer_t gp_rx_buf = NULL;
+    static cmox_ctr_handle_t g_ctr_ctx = {0};
 
     /**
-     *  FIFO buffer attributes
+     *  AES cipher context handle
      */
-    static const ring_buffer_attr_t g_buf_attr =
-    {
-       .item_size   = sizeof( uint8_t ),    // Byte size
-       .override    = false,                // Do not lost data
-       .p_mem       = NULL,                 // Dynamically allocate
-    };
+    static cmox_cipher_handle_t * gp_cipher_ctx = NULL;
+
+    /**
+     *  AES CTR Encryption Key
+     */
+    static const uint8_t gu8_key[] = { 0x1b, 0x0e, 0x6c, 0x90, 0x34, 0xda, 0x00, 0x32, 0x33, 0xdd, 0x54, 0x54, 0x09, 0xcf, 0x23, 0x41 };
+
+    /**
+     *  AES CTR Initial Vector (IV) Key
+     */
+    static const uint8_t gu8_iv[] = { 0x45, 0xf2, 0x34, 0x12,0xa3, 0x32, 0x34, 0xfd, 0xab, 0xcc, 0x1c, 0xed, 0x1c, 0x41, 0x20, 0x0f };
 
 #endif
-
-/**
- *  AES CTR context handle
- */
-static cmox_ctr_handle_t g_ctr_ctx = {0};
-
-/**
- *  AES cipher context handle
- */
-static cmox_cipher_handle_t * gp_cipher_ctx = NULL;
-
-/**
- *  AES CTR Encryption Key
- */
-static const uint8_t gu8_key[] = { 0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c };
-
-/**
- *  AES CTR Initial Vector (IV) Key
- */
-static const uint8_t gu8_iv[] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
 
 // USER CODE END...
 
@@ -147,7 +97,10 @@ static const uint8_t gu8_iv[] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07
 
 // USER CODE BEGIN...
 
-static boot_status_t bool_if_crypto_init(void);
+#if ( 1 == BOOT_CFG_CRYPTION_EN)
+    static boot_status_t boot_if_crypto_init        (void);
+    static boot_status_t boot_if_crypto_cypher_init (void);
+#endif
 
 // USER CODE END...
 
@@ -157,52 +110,75 @@ static boot_status_t bool_if_crypto_init(void);
 
 // USER CODE BEGIN...
 
-////////////////////////////////////////////////////////////////////////////////
-/**
-*       Initialize cryptographic library
-*
-* @return       status  - Status of operation
-*/
-////////////////////////////////////////////////////////////////////////////////
-static boot_status_t bool_if_crypto_init(void)
-{
-    boot_status_t status = eBOOT_OK;
+#if ( 1 == BOOT_CFG_CRYPTION_EN)
 
-    // Initialize cryptographic library
-    if ( CMOX_INIT_SUCCESS != cmox_initialize( NULL ))
+    ////////////////////////////////////////////////////////////////////////////////
+    /**
+    *       Initialize cryptographic library
+    *
+    * @return       status  - Status of operation
+    */
+    ////////////////////////////////////////////////////////////////////////////////
+    static boot_status_t boot_if_crypto_init(void)
     {
-        status = eBOOT_ERROR;
+        boot_status_t status = eBOOT_OK;
+
+        // Initialize cryptographic library
+        if ( CMOX_INIT_SUCCESS != cmox_initialize( NULL ))
+        {
+            status = eBOOT_ERROR;
+        }
+        else
+        {
+            // Construct and init chyper
+            status = boot_if_crypto_cypher_init();
+        }
+
+        return status;
     }
 
-    // Construct a cipher context
-    gp_cipher_ctx = cmox_ctr_construct( &g_ctr_ctx, CMOX_AESFAST_CTR_DEC );
-
-    // Check for construction creation
-    if ( NULL == gp_cipher_ctx )
+    ////////////////////////////////////////////////////////////////////////////////
+    /**
+    *       Initialize cypher
+    *
+    * @return       status  - Status of operation
+    */
+    ////////////////////////////////////////////////////////////////////////////////
+    static boot_status_t boot_if_crypto_cypher_init(void)
     {
-        status = eBOOT_ERROR;
+        boot_status_t status = eBOOT_OK;
+
+        // Construct a cipher context
+        gp_cipher_ctx = cmox_ctr_construct( &g_ctr_ctx, CMOX_AESFAST_CTR_DEC );
+
+        // Check for construction creation
+        if ( NULL == gp_cipher_ctx )
+        {
+            status = eBOOT_ERROR;
+        }
+
+        // Initialize the cipher context
+        if ( CMOX_CIPHER_SUCCESS != cmox_cipher_init( gp_cipher_ctx ))
+        {
+            status = eBOOT_ERROR;
+        }
+
+        // Setup decryption key
+        if ( CMOX_CIPHER_SUCCESS != cmox_cipher_setKey( gp_cipher_ctx, gu8_key, sizeof( gu8_key )))
+        {
+            status = eBOOT_ERROR;
+        }
+
+        // Setup Initilization Vector (IV)
+        if ( CMOX_CIPHER_SUCCESS != cmox_cipher_setIV( gp_cipher_ctx, gu8_iv, sizeof( gu8_iv )))
+        {
+            status = eBOOT_ERROR;
+        }
+
+        return status;
     }
 
-    // Initialize the cipher context
-    if ( CMOX_CIPHER_SUCCESS != cmox_cipher_init( gp_cipher_ctx ))
-    {
-        status = eBOOT_ERROR;
-    }
-
-    // Setup decryption key
-    if ( CMOX_CIPHER_SUCCESS != cmox_cipher_setKey( gp_cipher_ctx, gu8_key, sizeof( gu8_key )))
-    {
-        status = eBOOT_ERROR;
-    }
-
-    // Setup Initilization Vector (IV)
-    if ( CMOX_CIPHER_SUCCESS != cmox_cipher_setIV( gp_cipher_ctx, gu8_iv, sizeof( gu8_iv )))
-    {
-        status = eBOOT_ERROR;
-    }
-
-    return status;
-}
+#endif
 
 // USER CODE END...
 
@@ -234,34 +210,17 @@ boot_status_t boot_if_init(void)
 
     // USER CODE BEGIN...
 
-    #if ( 0 == BOOT_IF_CAN_COM_EN )
-        #ifdef DEBUG
-            if ( eUART_OK != uart_init( eUART_BOOT ))
-            {
-                status = eBOOT_ERROR;
-            }
-        #else
-            if ( eUART_OK != uart_init( eUART_DBG ))
-            {
-                status = eBOOT_ERROR;
-            }
-        #endif
-    #else
+    if ( eRS485_OK != rs485_init())
+    {
+        status = eBOOT_ERROR;
+    }
 
-        if ( eCAN_OK != can_init( eCAN_SYSTEM ))
-        {
-            status = eBOOT_ERROR;
-        }
-
-        if ( eRING_BUFFER_OK != ring_buffer_init( &gp_rx_buf, BOOT_IF_RX_BUF_SIZE, &g_buf_attr ))
-        {
-            status = eBOOT_ERROR;
-        }
-
-    #endif // ( 0 == BOOT_IF_CAN_COM_EN )
+#if ( 1 == BOOT_CFG_CRYPTION_EN)
 
     // Initialize cryptographic lib
-    status |= bool_if_crypto_init();
+    status |= boot_if_crypto_init();
+
+#endif
 
     // Init flash driver
     if ( eFLASH_OK != flash_init())
@@ -287,7 +246,7 @@ boot_status_t boot_if_deinit(void)
 
     // USER CODE BEGIN...
 
-    #if ( 1 == BOOT_IF_CRYPTION_EN)
+    #if ( 1 == BOOT_CFG_CRYPTION_EN)
 
         // De-Initialize cryptographic library
         if ( CMOX_INIT_SUCCESS != cmox_finalize( NULL ))
@@ -300,10 +259,8 @@ boot_status_t boot_if_deinit(void)
     // De-init gpio
     gpio_deinit();
 
-    // De-init CAN
-    #if ( 1 == BOOT_IF_CAN_COM_EN )
-        can_deinit( eCAN_SYSTEM );
-    #endif
+    // De-init RS-485
+    rs485_deinit();
 
     // Cli de-init
     cli_deinit();
@@ -339,38 +296,11 @@ boot_status_t boot_if_transmit(const uint8_t * const p_data, const uint16_t size
 
     // USER CODE BEGIN...
 
-    #if ( 0 == BOOT_IF_CAN_COM_EN )
-        #ifdef DEBUG
-            if ( eUART_OK != uart_transmit( eUART_BOOT, p_data, size ))
-            {
-                status = eBOOT_ERROR;
-            }
-        #else
-            if ( eUART_OK != uart_transmit( eUART_DBG, p_data, size ))
-            {
-                status = eBOOT_ERROR;
-            }
-        #endif
-    #else
-
-        // Create CAN message
-        can_msg_t msg =
-        {
-             .id    = BOOT_IF_CAN_MSG_TX_ID,
-             .fd    = true,
-             .dlc   = can_dlc_raw_to_real( size ),
-        };
-
-        // Copy data to message
-        memcpy( &msg.data, p_data, size );
-
-        // Transmit
-        if ( eCAN_OK != can_transmit( eCAN_SYSTEM, &msg ))
-        {
-            status = eBOOT_ERROR;
-        }
-
-    #endif // ( 0 == BOOT_IF_CAN_COM_EN )
+    // Transmit
+    if ( eRS485_OK != rs485_transmit( p_data, size ))
+    {
+        status = eBOOT_ERROR;
+    }
 
     // USER CODE END...
 
@@ -393,46 +323,11 @@ boot_status_t boot_if_receive(uint8_t * const p_data)
 
     // USER CODE BEGIN...
 
-    #if ( 0 == BOOT_IF_CAN_COM_EN )
-        #ifdef DEBUG
-            if ( eUART_OK != uart_receive( eUART_BOOT, p_data ))
-            {
-                status = eBOOT_ERROR;
-            }
-        #else
-            if ( eUART_OK != uart_receive( eUART_DBG, p_data ))
-            {
-                status = eBOOT_ERROR;
-            }
-        #endif
-    #else
-
-        can_msg_t msg = {0};
-
-        // Take all received CAN message and make binary stream out of it
-        while( eCAN_OK == can_receive( eCAN_SYSTEM, &msg ))
-        {
-            // Filter CAN messages
-            if ( BOOT_IF_CAN_MSG_RX_ID == msg.id )
-            {
-                // Get size of received data
-                const uint8_t rx_bytes = can_dlc_real_to_raw( msg.dlc );
-
-                // Assemble binary stream
-                for ( uint8_t byte = 0; byte < rx_bytes; byte++ )
-                {
-                    (void) ring_buffer_add( gp_rx_buf, (uint8_t*) &msg.data[byte] );
-                }
-            }
-        }
-
-        // Get data from RX FIFO
-        if ( eRING_BUFFER_OK != ring_buffer_get( gp_rx_buf, (uint8_t*) p_data ))
-        {
-            status = eBOOT_ERROR;
-        }
-
-    #endif // ( 0 == BOOT_IF_CAN_COM_EN )
+    // Receive
+    if ( eRS485_OK != rs485_receive( p_data ))
+    {
+        status = eBOOT_ERROR;
+    }
 
     // USER CODE END...
 
@@ -452,26 +347,10 @@ boot_status_t boot_if_clear_rx_buf(void)
 
     // USER CODE BEGIN...
 
-    #if ( 0 == BOOT_IF_CAN_COM_EN )
-        #ifdef DEBUG
-            if ( eUART_OK != uart_clear_rx_buf( eUART_BOOT ))
-            {
-                status = eBOOT_ERROR;
-            }
-        #else
-            if ( eUART_OK != uart_clear_rx_buf( eUART_DBG ))
-            {
-                status = eBOOT_ERROR;
-            }
-        #endif
-    #else
-
-        if ( eCAN_OK != can_clear_rx_buf( eCAN_SYSTEM ))
-        {
-            status = eBOOT_ERROR;
-        }
-
-    #endif // ( 0 == BOOT_IF_CAN_COM_EN )
+    if ( eRS485_OK != rs485_reset_rx_buf())
+    {
+        status = eBOOT_ERROR;
+    }
 
     // USER CODE END...
 
@@ -595,6 +474,9 @@ boot_status_t boot_if_flash_erase(const uint32_t addr, const uint32_t size)
 
         //Cleanup the handle
         (void) cmox_cipher_cleanup( gp_cipher_ctx );
+
+        // Construct and init cypher
+        (void) boot_if_crypto_cypher_init();
 
         // USER CODE END...
     }

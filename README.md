@@ -446,28 +446,29 @@ root/middleware/boot/boot/"module_space"
 
 | Configuration | Description |
 | --- | --- |
-| **BOOT_CFG_APP_HEAD_ADDR** 			          | Application header address in flash |
-| **BOOT_CFG_APP_HEAD_SIZE** 			          | Application header size in bytes |
-| **BOOT_CFG_APP_SIZE** 			              | Complete (maximum) application size in bytes |
-| **BOOT_CFG_FW_SIZE_CHECK_EN** 			      | Enable/Disable new firmware size check |
-| **BOOT_CFG_FW_VER_CHECK_EN** 			        | Enable/Disable new firmware version compatibility check |
-| **BOOT_CFG_FW_VER_MAJOR** 			          | New firmware compatibility major version |
-| **BOOT_CFG_FW_VER_MINOR** 			          | New firmware compatibility minor version |
-| **BOOT_CFG_FW_VER_DEVELOP** 			        | New firmware compatibility develop version |
-| **BOOT_CFG_FW_VER_TEST** 			            | New firmware compatibility test version |
-| **BOOT_CFG_FW_DOWNGRADE_EN** 			        | Enable/Disable firmware downgrade |
-| **BOOT_CFG_HW_VER_CHECK_EN** 			        | Enable/Disable new firmware version compatibility check |
-| **BOOT_CFG_HW_VER_MAJOR** 			          | New firmware hardware compatibility major version |
-| **BOOT_CFG_HW_VER_MINOR** 			          | New firmware hardware compatibility minor version |
-| **BOOT_CFG_HW_VER_DEVELOP** 			        | New firmware hardware compatibility develop version |
-| **BOOT_CFG_HW_VER_TEST** 			            | New firmware hardware compatibility test version |
-| **BOOT_CFG_APP_BOOT_CNT_CHECK_EN** 	      | Enable/Disable boot counting check |
+| **BOOT_CFG_APP_HEAD_ADDR** 			    | Application header address in flash |
+| **BOOT_CFG_APP_HEAD_SIZE** 			    | Application header size in bytes |
+| **BOOT_CFG_APP_SIZE** 			        | Complete (maximum) application size in bytes |
+| **BOOT_CFG_FW_SIZE_CHECK_EN** 			| Enable/Disable new firmware size check |
+| **BOOT_CFG_FW_VER_CHECK_EN** 			    | Enable/Disable new firmware version compatibility check |
+| **BOOT_CFG_FW_VER_MAJOR** 			    | New firmware compatibility major version |
+| **BOOT_CFG_FW_VER_MINOR** 			    | New firmware compatibility minor version |
+| **BOOT_CFG_FW_VER_DEVELOP** 			    | New firmware compatibility develop version |
+| **BOOT_CFG_FW_VER_TEST** 			        | New firmware compatibility test version |
+| **BOOT_CFG_FW_DOWNGRADE_EN** 			    | Enable/Disable firmware downgrade |
+| **BOOT_CFG_HW_VER_CHECK_EN** 			    | Enable/Disable new firmware version compatibility check |
+| **BOOT_CFG_HW_VER_MAJOR** 			    | New firmware hardware compatibility major version |
+| **BOOT_CFG_HW_VER_MINOR** 			    | New firmware hardware compatibility minor version |
+| **BOOT_CFG_HW_VER_DEVELOP** 			    | New firmware hardware compatibility develop version |
+| **BOOT_CFG_HW_VER_TEST** 			        | New firmware hardware compatibility test version |
+| **BOOT_CFG_APP_BOOT_CNT_CHECK_EN** 	    | Enable/Disable boot counting check |
 | **BOOT_CFG_BOOT_CNT_LIMIT** 	            | Boot counts limit |
 | **BOOT_CFG_WAIT_AT_STARTUP_MS** 	        | Bootloader back-door entry timeout |
 | **BOOT_CFG_PREPARE_IDLE_TIMEOUT_MS** 	    | Communication idle timeout time in PREPARE state |
-| **BOOT_CFG_FLASH_IDLE_TIMEOUT_MS** 	      | Communication idle timeout time in FLASH DATA state |
-| **BOOT_CFG_EXIT_IDLE_TIMEOUT_MS** 	      | Communication idle timeout time in EXIT state |
+| **BOOT_CFG_FLASH_IDLE_TIMEOUT_MS** 	    | Communication idle timeout time in FLASH DATA state |
+| **BOOT_CFG_EXIT_IDLE_TIMEOUT_MS** 	    | Communication idle timeout time in EXIT state |
 | **BOOT_CFG_RX_BUF_SIZE** 	                | Reception buffer size in bytes |
+| **BOOT_CFG_DATA_PAYLOAD_SIZE** 	        | Maximum size of flash data payload command |
 | **BOOT_CFG_JUMP_TO_APP_TIMEOUT_MS** 	    | Jump to app (if valid) timeout time |
 | **BOOT_GET_SYSTICK** 	                    | System timetick in 32-bit unsigned integer form |
 | **BOOT_CFG_STATIC_ASSERT**                | Static assert definition |

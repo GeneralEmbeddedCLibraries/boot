@@ -5,6 +5,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project/module adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
+## V0.2.0 - 15.02.2024
+
+### Added
+ - New release of application signature tool: app_sign_tool__V0_3_0.exe (for application header V1)
+ - New release of application signature tool: app_sign_tool__V0_4_0.exe (for application header V2)
+ - New configuration *"BOOT_CFG_DATA_PAYLOAD_SIZE"*
+
+### Changes
+ - Minor bug fixes
+
+---
 ## V0.1.0 - 20.10.2023
 
 ### Notice

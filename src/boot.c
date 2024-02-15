@@ -1,4 +1,4 @@
-// Copyright (c) 2023 Ziga Miklosic
+// Copyright (c) 2024 Ziga Miklosic
 // All Rights Reserved
 // This software is under MIT licence (https://opensource.org/licenses/MIT)
 ////////////////////////////////////////////////////////////////////////////////
@@ -7,8 +7,8 @@
 *@brief     Bootloader
 *@author    Ziga Miklosic
 *@email     ziga.miklosic@gmail.com
-*@date      06.08.2023
-*@version   V0.1.0
+*@date      15.02.2024
+*@version   V0.2.0
 */
 ////////////////////////////////////////////////////////////////////////////////
 /*!
@@ -334,8 +334,8 @@ static uint32_t boot_fw_image_calc_crc(const uint32_t size)
 ////////////////////////////////////////////////////////////////////////////////
 static boot_status_t boot_fw_image_validate(void)
 {
-	boot_status_t 	 status 	= eBOOT_OK;
-    ver_app_header_t app_header = {0};
+    static  ver_app_header_t app_header = {0};
+            boot_status_t    status     = eBOOT_OK;
 
     // Read application header
     status = boot_app_head_read( &app_header );
@@ -920,9 +920,9 @@ void boot_com_flash_msg_rcv_cb(const uint8_t * const p_data, const uint16_t size
         {
          #if ( 1 == BOOT_CFG_CRYPTION_EN )
 
-            static  uint8_t decrypted_data[128] = {0};
+            static uint8_t decrypted_data[BOOT_CFG_DATA_PAYLOAD_SIZE] = {0};
 
-            BOOT_ASSERT( size > 128 );
+            BOOT_ASSERT( size < BOOT_CFG_DATA_PAYLOAD_SIZE );
 
             // Decrypt data
             boot_if_decrypt_data( p_data, (uint8_t*) &decrypted_data, size );
