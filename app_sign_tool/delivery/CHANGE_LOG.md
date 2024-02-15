@@ -17,6 +17,9 @@ and this project/module adheres to [Semantic Versioning](https://semver.org/spec
 ---
 ## V0.3.0 - 22.12.2023
 
+### Notice
+ - This release expects Application Header V1 according to [Revision](https://github.com/GeneralEmbeddedCLibraries/revision) module
+
 ### Added 
  - Pading binary image to configured block size
  - Pip requirements
