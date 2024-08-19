@@ -212,7 +212,7 @@ static boot_status_t boot_app_head_read(ver_app_header_t * const p_head)
         const uint8_t app_head_crc_calc = boot_app_head_calc_crc( p_head );
 
         // Check CRC
-        if ( app_head_crc_calc != p_head->crc )
+        if ( app_head_crc_calc != p_head->ctrl.crc )
         {
             // Application header corrupted
             status = eBOOT_ERROR_CRC;
@@ -344,10 +344,10 @@ static boot_status_t boot_fw_image_validate(void)
     if ( eBOOT_OK == status )
     {
     	// Calculate firmware image crc
-    	const uint32_t fw_crc_calc = boot_fw_image_calc_crc( app_header.app_size );
+    	const uint32_t fw_crc_calc = boot_fw_image_calc_crc( app_header.data.app_size );
 
     	// FW image CRC valid
-    	if ( app_header.app_crc == fw_crc_calc )
+    	if ( app_header.data.app_crc == fw_crc_calc )
     	{
     		BOOT_DBG_PRINT( "Firmware image OK!" );
     	}
