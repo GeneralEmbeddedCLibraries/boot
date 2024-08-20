@@ -36,7 +36,7 @@ TOOL_DESCRIPTION = \
 "Firmware Application Signature Tool %s" % MAIN_SCRIPT_VER
 
 # Expected application header version
-APP_HEADER_VER_EXPECTED         = 2
+APP_HEADER_VER_EXPECTED         = 1
 
 # Application header addresses
 APP_HEADER_CRC_ADDR             = 0x00
