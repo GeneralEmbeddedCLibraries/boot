@@ -4,9 +4,9 @@
 ##
 ## @file:       app_sign_tool.py
 ## @brief:      This script fills up application header informations
-## @date:		22.12.2023
+## @date:		20.08.2024
 ## @author:		Ziga Miklosic
-## @version:    V0.3.0
+## @version:    V0.4.0
 ##
 #################################################################################################
 
@@ -39,13 +39,21 @@ TOOL_DESCRIPTION = \
 APP_HEADER_VER_EXPECTED         = 2
 
 # Application header addresses
-APP_HEADER_APP_SIZE_ADDR        = 0x08
-APP_HEADER_APP_CRC_ADDR         = 0x0C
-APP_HEADER_VER_ADDR             = 0x1FE
-APP_HEADER_CRC_ADDR             = 0x1FF
+APP_HEADER_CRC_ADDR             = 0x00
+APP_HEADER_VER_ADDR             = 0x01
+
+# Application header data fields
+APP_HEADER_SW_VER_ADDR          = 0x08
+APP_HEADER_HW_VER_ADDR          = 0x0C
+APP_HEADER_APP_SIZE_ADDR        = 0x10
+APP_HEADER_APP_CRC_ADDR         = 0x14
+APP_HEADER_ENC_TYPE             = 0x18
+APP_HEADER_SIG_TYPE             = 0x1C
+APP_HEADER_SIG_SHA256           = 0x20
+
 
 # Application header size in bytes
-APP_HEADER_SIZE_BYTE            = 0x200 #512 bytes
+APP_HEADER_SIZE_BYTE            = 0x100 #512 bytes
 
 # Enable padding
 PAD_ENABLE                      = True
