@@ -66,7 +66,7 @@ BOOT_CFG_STATIC_ASSERT( sizeof(boot_shared_mem_t) == 32U );
  *
  *  @note 	Right after application header!
  */
-#define BOOT_APP_START_ADDR				        ( BOOT_CFG_APP_HEAD_ADDR + BOOT_CFG_APP_HEAD_SIZE )
+#define BOOT_APP_START_ADDR				        ( 0x08010200 ) // TOOD: Fix this! ( BOOT_CFG_APP_HEAD_ADDR + BOOT_CFG_APP_HEAD_SIZE )
 
 /**
  *      Shared memory layout version
@@ -264,8 +264,8 @@ static uint8_t boot_app_head_calc_crc(const ver_app_header_t * const p_head)
     uint8_t crc8 = 0U;
 
     // Calculate CRC
-    // NOTE: Ignore CRC value at the end (-1)
-    crc8 = boot_calc_crc((uint8_t*) p_head, ( BOOT_CFG_APP_HEAD_SIZE - 1U ));
+    // NOTE: Skip CRC at the end and start calculation at version field!
+    crc8 = boot_calc_crc((uint8_t*) &(p_head->ctrl.ver), ( BOOT_CFG_APP_HEAD_SIZE - 1U ));
 
     return crc8;
 }
@@ -334,8 +334,8 @@ static uint32_t boot_fw_image_calc_crc(const uint32_t size)
 ////////////////////////////////////////////////////////////////////////////////
 static boot_status_t boot_fw_image_validate(void)
 {
+            boot_status_t    status = eBOOT_OK;
     static  ver_app_header_t app_header = {0};
-            boot_status_t    status     = eBOOT_OK;
 
     // Read application header
     status = boot_app_head_read( &app_header );
