@@ -53,7 +53,7 @@ APP_HEADER_SIG_SHA256           = 0x20
 
 
 # Application header size in bytes
-APP_HEADER_SIZE_BYTE            = 0x100 #512 bytes
+APP_HEADER_SIZE_BYTE            = 0x100 #256 bytes
 
 # Enable padding
 PAD_ENABLE                      = True
@@ -297,8 +297,8 @@ def main():
             out_file.write( APP_HEADER_APP_CRC_ADDR, struct.pack('I', int(app_crc)))
 
             # Calculate application header CRC
-            # NOTE: Ignore last CRC field!
-            app_header_crc = calc_crc8( out_file.read( 0, APP_HEADER_SIZE_BYTE - 1 ))
+            # NOTE: Ignore first field as it is CRC value itself!
+            app_header_crc = calc_crc8( out_file.read( 1, APP_HEADER_SIZE_BYTE - 1 ))
 
             # Write application header crc
             out_file.write( APP_HEADER_CRC_ADDR, [app_header_crc] )
