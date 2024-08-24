@@ -60,14 +60,6 @@ _Static_assert( 1 <= VER_VER_MINOR );
  */
 BOOT_CFG_STATIC_ASSERT( sizeof(boot_shared_mem_t) == 32U );
 
-
-/**
- *  	Start of application address
- *
- *  @note 	Right after application header!
- */
-#define BOOT_APP_START_ADDR				        ( 0x08010200 ) // TOOD: Fix this! ( BOOT_CFG_APP_HEAD_ADDR + BOOT_CFG_APP_HEAD_SIZE )
-
 /**
  *      Shared memory layout version
  */
@@ -206,7 +198,8 @@ static boot_status_t boot_app_head_read(ver_app_header_t * const p_head)
     boot_status_t status = eBOOT_OK;
 
     // Read application header
-    if ( eBOOT_OK == boot_if_flash_read( BOOT_CFG_APP_HEAD_ADDR, BOOT_CFG_APP_HEAD_SIZE, (uint8_t*) p_head ))
+    //if ( eBOOT_OK == boot_if_flash_read( BOOT_CFG_APP_HEAD_ADDR, BOOT_CFG_APP_HEAD_SIZE, (uint8_t*) p_head ))
+    if ( eBOOT_OK == boot_if_flash_read( BOOT_CFG_APP_HEAD_ADDR, sizeof(ver_app_header_t), (uint8_t*) p_head ))
     {
         // Calculate application header crc
         const uint8_t app_head_crc_calc = boot_app_head_calc_crc( p_head );
@@ -243,7 +236,7 @@ static boot_status_t boot_app_head_erase(void)
     boot_status_t status = eBOOT_OK;
 
     // Erase application header
-    if ( eBOOT_OK != boot_if_flash_erase( BOOT_CFG_APP_HEAD_ADDR, BOOT_CFG_APP_HEAD_SIZE ))
+    if ( eBOOT_OK != boot_if_flash_erase( BOOT_CFG_APP_HEAD_ADDR, sizeof(ver_app_header_t)))
     {
         status = eBOOT_ERROR;
     }
@@ -265,7 +258,7 @@ static uint8_t boot_app_head_calc_crc(const ver_app_header_t * const p_head)
 
     // Calculate CRC
     // NOTE: Skip CRC at the end and start calculation at version field!
-    crc8 = boot_calc_crc((uint8_t*) &(p_head->ctrl.ver), ( BOOT_CFG_APP_HEAD_SIZE - 1U ));
+    crc8 = boot_calc_crc((uint8_t*) &(p_head->ctrl.ver), ( sizeof(ver_app_header_t) - 1U ));
 
     return crc8;
 }
@@ -291,10 +284,13 @@ static uint32_t boot_fw_image_calc_crc(const uint32_t size)
             uint32_t    crc32   = seed;
             uint8_t     data    = 0U;
 
-    for (uint32_t i = 0; i < ( size - BOOT_CFG_APP_HEAD_SIZE ); i++)
+    // Calculate size of app image without application header
+    const uint32_t app_size = ( size - sizeof(ver_app_header_t));
+
+    for (uint32_t i = 0; i < app_size; i++)
     {
     	// Ignore application header from CRC calc
-        const uint32_t addr = BOOT_CFG_APP_HEAD_ADDR + BOOT_CFG_APP_HEAD_SIZE + i;
+        const uint32_t addr = BOOT_CFG_APP_HEAD_ADDR + sizeof(ver_app_header_t) + i;
 
         // Read byte from application
         (void) boot_if_flash_read( addr, 1U, (uint8_t*)&data );
@@ -394,10 +390,10 @@ static boot_status_t boot_start_application(void)
 	if ( eBOOT_OK == status )
 	{
 		// Set stack pointer
-		__set_MSP( BOOT_APP_START_ADDR );
+		__set_MSP( BOOT_CFG_APP_START_ADDR );
 
 		// Next address is reset vector for app
-		const uint32_t app_addr = *(uint32_t*)( BOOT_APP_START_ADDR + 4U );
+		const uint32_t app_addr = *(uint32_t*)( BOOT_CFG_APP_START_ADDR + 4U );
 		p_func p_app = (p_func) app_addr;
 
 		// Start Application
@@ -506,7 +502,7 @@ static boot_msg_status_t boot_fw_size_check(const uint32_t fw_size)
     #if ( 1 == BOOT_CFG_FW_SIZE_CHECK_EN )
 
         // New application image to big!
-        if ( fw_size > BOOT_CFG_APP_SIZE )
+        if ( fw_size > BOOT_CFG_APP_SIZE_MAX )
         {
             status = eBOOT_MSG_ERROR_FW_SIZE;
         }
@@ -846,7 +842,7 @@ void boot_com_prepare_msg_rcv_cb(const uint32_t fw_size, const uint32_t fw_ver, 
         if ( eBOOT_MSG_OK == msg_status )
         {
             // Erase application region flash
-            if ( eBOOT_OK != boot_if_flash_erase( BOOT_CFG_APP_HEAD_ADDR, BOOT_CFG_APP_SIZE ))
+            if ( eBOOT_OK != boot_if_flash_erase( BOOT_CFG_APP_HEAD_ADDR, BOOT_CFG_APP_SIZE_MAX ))
             {
                 msg_status = eBOOT_MSG_ERROR_FLASH_ERASE;
             }
