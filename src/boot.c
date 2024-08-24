@@ -99,10 +99,10 @@ static boot_msg_status_t    boot_hw_ver_check           (const uint32_t hw_ver);
 static void                 boot_init_boot_counter      (void);
 
 // FSM state handlers
-static void boot_fsm_idle_hndl      (void);
-static void boot_fsm_prepare_hndl   (void);
-static void boot_fsm_flash_hndl     (void);
-static void boot_fsm_exit_hndl      (void);
+static void boot_fsm_idle_hndl      (const p_fsm_t fsm_inst);
+static void boot_fsm_prepare_hndl   (const p_fsm_t fsm_inst);
+static void boot_fsm_flash_hndl     (const p_fsm_t fsm_inst);
+static void boot_fsm_exit_hndl      (const p_fsm_t fsm_inst);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Variables
@@ -119,21 +119,16 @@ static volatile boot_shared_mem_t __BOOT_CFG_SHARED_MEM__ g_boot_shared_mem;
 static p_fsm_t g_boot_fsm = NULL;
 
 /**
- *  Bootloader FSM State Configurations
+ * FSM state table
  */
 static const fsm_cfg_t g_boot_fsm_cfg_table =
 {
-    /**
-     *      State functions
-     *
-     *  NOTE: Sequence matters!
-     */
-    .state =
+    .p_states = (fsm_state_cfg_t[])
     {
-        [eBOOT_STATE_IDLE]    = { .func = boot_fsm_idle_hndl,     .name = "IDLE"      },
-        [eBOOT_STATE_PREPARE] = { .func = boot_fsm_prepare_hndl,  .name = "PREPARE"   },
-        [eBOOT_STATE_FLASH]   = { .func = boot_fsm_flash_hndl,    .name = "FLASH"     },
-        [eBOOT_STATE_EXIT]    = { .func = boot_fsm_exit_hndl,     .name = "EXIT"      },
+        [eBOOT_STATE_IDLE]      = {.on_entry=NULL, .on_activity=boot_fsm_idle_hndl,     .on_exit=NULL, .name="IDLE"     },
+        [eBOOT_STATE_PREPARE]   = {.on_entry=NULL, .on_activity=boot_fsm_prepare_hndl,  .on_exit=NULL, .name="PREPARE"  },
+        [eBOOT_STATE_FLASH]     = {.on_entry=NULL, .on_activity=boot_fsm_flash_hndl,    .on_exit=NULL, .name="FLASH"    },
+        [eBOOT_STATE_EXIT]      = {.on_entry=NULL, .on_activity=boot_fsm_exit_hndl,     .on_exit=NULL, .name="EXIT"     },
     },
     .name   = "Boot FSM",
     .num_of = eBOOT_STATE_NUM_OF,
@@ -143,7 +138,6 @@ static const fsm_cfg_t g_boot_fsm_cfg_table =
  *  Flashing data
  */
 static boot_flashing_t g_boot_flashing = { 0 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 // Functions
@@ -632,11 +626,15 @@ static void boot_init_boot_counter(void)
 /**
 *       IDLE bootloader FSM state
 *
+* @param[in]    fsm_inst - FMS instance
 * @return       void
 */
 ////////////////////////////////////////////////////////////////////////////////
-static void boot_fsm_idle_hndl(void)
+static void boot_fsm_idle_hndl(const p_fsm_t fsm_inst)
 {
+    // Unused
+    (void) fsm_inst;
+
     static bool try_to_leave = false;
 
     // On first entry
@@ -681,11 +679,15 @@ static void boot_fsm_idle_hndl(void)
 /**
 *       PREPARE bootloader FSM state
 *
+* @param[in]    fsm_inst - FMS instance
 * @return       void
 */
 ////////////////////////////////////////////////////////////////////////////////
-static void boot_fsm_prepare_hndl(void)
+static void boot_fsm_prepare_hndl(const p_fsm_t fsm_inst)
 {
+    // Unused
+    (void) fsm_inst;
+
     // Get time in that state
     const uint32_t state_duration = fsm_get_duration( g_boot_fsm );
 
@@ -705,11 +707,15 @@ static void boot_fsm_prepare_hndl(void)
 /**
 *       FLASH bootloader FSM state
 *
+* @param[in]    fsm_inst - FMS instance
 * @return       void
 */
 ////////////////////////////////////////////////////////////////////////////////
-static void boot_fsm_flash_hndl(void)
+static void boot_fsm_flash_hndl(const p_fsm_t fsm_inst)
 {
+    // Unused
+    (void) fsm_inst;
+
     // Get time in that state
     const uint32_t state_duration = fsm_get_duration( g_boot_fsm );
 
@@ -736,11 +742,15 @@ static void boot_fsm_flash_hndl(void)
 /**
 *       EXIT bootloader FSM state
 *
+* @param[in]    fsm_inst - FMS instance
 * @return       void
 */
 ////////////////////////////////////////////////////////////////////////////////
-static void boot_fsm_exit_hndl(void)
+static void boot_fsm_exit_hndl(const p_fsm_t fsm_inst)
 {
+    // Unused
+    (void) fsm_inst;
+
     // Get time in that state
     const uint32_t state_duration = fsm_get_duration( g_boot_fsm );
 
@@ -760,6 +770,7 @@ static void boot_fsm_exit_hndl(void)
 /**
 *       Connect Bootloader Message Reception Callback
 *
+* @param[in]    fsm_inst - FMS instance
 * @return       void
 */
 ////////////////////////////////////////////////////////////////////////////////
