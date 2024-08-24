@@ -25,11 +25,12 @@ Bootloader has custom, lightweight and pyhsical layer agnostics communication in
 Bootloader and application data exchange takes over special RAM section defined as non-initialized aka. *.noinit* section. 
 
 Following data is being exhange between bootloader and application:
- 1. **Boot reason**: Booting reason, to tell bootloader what actions shall be taken, either loading new image via PC or external FLASH, or just jump to application
- 2. **Boot counter**: Safety/Reliablity counter that gets incerement on each boot by bootloader and later cleared by application after couple of minutes of stable operation
+ 1. **Bootloader version**: Software version of bootloader
+ 2. **Boot reason**: Booting reason, to tell bootloader what actions shall be taken, either loading new image via PC or external FLASH, or just jump to application
+ 3. **Boot counter**: Safety/Reliablity counter that gets incerement on each boot by bootloader and later cleared by application after couple of minutes of stable operation
 
-Shared memory space V1 is 32 bytes in size with following data structure:
-![](doc/pic/Shared_Memory_V1.png)
+Shared memory space is 32 bytes in size with following data structure:
+![](doc/pic/Shared_Memory_NEW_V1.png)
 
 Setup linker script for common shared memory between bootloader and application by first defining new memory inside RAM called ***SHARED_MEM*** region:
 
@@ -398,7 +399,7 @@ def aes_encode(plain_data):
 ### **1. Flash memory map**
 Bootloader expect predefined application binary code as shown in picture. Size of bootloader and application are subject to change to suit SW requirements and are used only for presentation purposes.
 
-![](doc/pic/Flash_MemoryMap.png)
+![](doc/pic/Flash_MemoryMap_NEW.png)
 
 ### **2. Application header**
 Application code must have a ***Application Header*** in order to validate data integritiy of image.
