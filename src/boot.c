@@ -104,7 +104,6 @@ static void boot_fsm_prepare_hndl   (void);
 static void boot_fsm_flash_hndl     (void);
 static void boot_fsm_exit_hndl      (void);
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // Variables
 ////////////////////////////////////////////////////////////////////////////////
@@ -198,7 +197,6 @@ static boot_status_t boot_app_head_read(ver_app_header_t * const p_head)
     boot_status_t status = eBOOT_OK;
 
     // Read application header
-    //if ( eBOOT_OK == boot_if_flash_read( BOOT_CFG_APP_HEAD_ADDR, BOOT_CFG_APP_HEAD_SIZE, (uint8_t*) p_head ))
     if ( eBOOT_OK == boot_if_flash_read( BOOT_CFG_APP_HEAD_ADDR, sizeof(ver_app_header_t), (uint8_t*) p_head ))
     {
         // Calculate application header crc
@@ -546,7 +544,7 @@ static boot_msg_status_t boot_fw_ver_check(const uint32_t fw_ver)
 
 #if ( 0 == BOOT_CFG_FW_DOWNGRADE_EN )
 
-        ver_app_header_t app_header = {0};
+        static ver_app_header_t app_header = {0};
 
         // Application header valid
         if ( eBOOT_OK == boot_app_head_read( &app_header ))
