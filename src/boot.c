@@ -415,7 +415,7 @@ static boot_status_t boot_shared_mem_calc_crc(const boot_shared_mem_t * const p_
 
     // Calculate crc
     // NOTE: Ignore CRC value at the end (-1)
-    crc8 = boot_calc_crc((uint8_t*) p_mem, ( sizeof(boot_shared_mem_t) - 1U ));
+    crc8 = boot_calc_crc((uint8_t*) &( p_mem->ctrl.ver ), ( sizeof(boot_shared_mem_t) - 1U ));
 
     return crc8;
 }
@@ -432,27 +432,27 @@ static boot_status_t boot_shared_mem_calc_crc(const boot_shared_mem_t * const p_
 static void boot_init_shared_mem(void)
 {
     // Shared memory CRC OK
-    if ( boot_shared_mem_calc_crc((const boot_shared_mem_t *) &g_boot_shared_mem ) == g_boot_shared_mem.crc )
+    if ( boot_shared_mem_calc_crc((const boot_shared_mem_t *) &g_boot_shared_mem ) == g_boot_shared_mem.ctrl.crc )
     {
         // Count boot ups
-        if ( g_boot_shared_mem.boot_cnt < UINT8_MAX )
+        if ( g_boot_shared_mem.data.boot_cnt < UINT8_MAX )
         {
-            g_boot_shared_mem.boot_cnt++;
+            g_boot_shared_mem.data.boot_cnt++;
         }
     }
 
     // CRC error
     else
     {
-        g_boot_shared_mem.boot_cnt      = 0U;
-        g_boot_shared_mem.boot_reason   = eBOOT_REASON_NONE;
+        g_boot_shared_mem.data.boot_cnt      = 0U;
+        g_boot_shared_mem.data.boot_reason   = eBOOT_REASON_NONE;
     }
 
     // Set shared mem version
-    g_boot_shared_mem.ver = BOOT_SHARED_MEM_VER;
+    g_boot_shared_mem.ctrl.ver = BOOT_SHARED_MEM_VER;
 
     // Calculate CRC
-    g_boot_shared_mem.crc = boot_shared_mem_calc_crc((const boot_shared_mem_t *) &g_boot_shared_mem );
+    g_boot_shared_mem.ctrl.crc = boot_shared_mem_calc_crc((const boot_shared_mem_t *) &g_boot_shared_mem );
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1164,7 +1164,7 @@ boot_status_t boot_init(void)
     boot_init_boot_counter();
 
     // No reason to stay in bootloader
-    if ( eBOOT_REASON_NONE == g_boot_shared_mem.boot_reason )
+    if ( eBOOT_REASON_NONE == g_boot_shared_mem.data.boot_reason )
     {
         // Application image validated OK
         if ( eBOOT_OK == boot_fw_image_validate())
@@ -1246,9 +1246,9 @@ boot_status_t boot_shared_mem_get_version(uint8_t * const p_version)
     if ( NULL != p_version )
     {
         // Validate shared memory
-        if ( g_boot_shared_mem.crc == boot_shared_mem_calc_crc((const boot_shared_mem_t *) &g_boot_shared_mem ))
+        if ( g_boot_shared_mem.ctrl.crc == boot_shared_mem_calc_crc((const boot_shared_mem_t *) &g_boot_shared_mem ))
         {
-            *p_version = g_boot_shared_mem.ver;
+            *p_version = g_boot_shared_mem.ctrl.ver;
         }
         else
         {
@@ -1276,10 +1276,10 @@ boot_status_t boot_shared_mem_set_boot_reason(const boot_reason_t reason)
     boot_status_t status = eBOOT_OK;
 
     // Set reason
-    g_boot_shared_mem.boot_reason = reason;
+    g_boot_shared_mem.data.boot_reason = reason;
 
     // Calculate CRC
-    g_boot_shared_mem.crc = boot_shared_mem_calc_crc((const boot_shared_mem_t *) &g_boot_shared_mem );
+    g_boot_shared_mem.ctrl.crc = boot_shared_mem_calc_crc((const boot_shared_mem_t *) &g_boot_shared_mem );
 
     return status;
 }
@@ -1304,9 +1304,9 @@ boot_status_t boot_shared_mem_get_boot_reason(boot_reason_t * const p_reason)
     if ( NULL != p_reason )
     {
         // Validate shared memory
-        if ( g_boot_shared_mem.crc == boot_shared_mem_calc_crc((const boot_shared_mem_t *) &g_boot_shared_mem ))
+        if ( g_boot_shared_mem.ctrl.crc == boot_shared_mem_calc_crc((const boot_shared_mem_t *) &g_boot_shared_mem ))
         {
-            *p_reason = g_boot_shared_mem.boot_reason;
+            *p_reason = g_boot_shared_mem.data.boot_reason;
         }
         else
         {
@@ -1334,10 +1334,10 @@ boot_status_t boot_shared_mem_set_boot_cnt(const uint8_t cnt)
     boot_status_t status = eBOOT_OK;
 
     // Set counts
-    g_boot_shared_mem.boot_cnt = cnt;
+    g_boot_shared_mem.data.boot_cnt = cnt;
 
     // Calculate CRC
-    g_boot_shared_mem.crc = boot_shared_mem_calc_crc((const boot_shared_mem_t *) &g_boot_shared_mem );
+    g_boot_shared_mem.ctrl.crc = boot_shared_mem_calc_crc((const boot_shared_mem_t *) &g_boot_shared_mem );
 
     return status;
 }
@@ -1365,9 +1365,9 @@ boot_status_t boot_shared_mem_get_boot_cnt(uint8_t * const p_cnt)
     if ( NULL != p_cnt )
     {
         // Validate shared memory
-        if ( g_boot_shared_mem.crc == boot_shared_mem_calc_crc((const boot_shared_mem_t *) &g_boot_shared_mem ))
+        if ( g_boot_shared_mem.ctrl.crc == boot_shared_mem_calc_crc((const boot_shared_mem_t *) &g_boot_shared_mem ))
         {
-            *p_cnt = g_boot_shared_mem.boot_cnt;
+            *p_cnt = g_boot_shared_mem.data.boot_cnt;
         }
         else
         {

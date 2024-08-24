@@ -90,16 +90,42 @@ typedef enum
 /**
  *      Shared memory layout
  *
- *  @note   Layout version V1!
+ *  Sizeof: 32bytes
  */
-typedef struct
+typedef struct __BOOT_CFG_PACKED__
 {
-	boot_reason_t   boot_reason;    /**<Boot reason */
-	uint8_t         boot_cnt;       /**<Boot counter */
-	uint8_t         res[28];        /**<Reserved space */
-	uint8_t         ver;            /**<Shared memory layout version */
-	uint8_t         crc;            /**<CRC8 of shared memory */
+    /**     Control fields
+     *
+     *  Sizeof: 8 bytes
+     *
+     *  @note   Are fixed, shall not be change during different versions!
+     */
+    struct
+    {
+        uint8_t ver;    /**<Shared memory layout version */
+        uint8_t crc;    /**<CRC8 of shared memory */
+        uint8_t res[6]; /**<Reserved fields */
+    } ctrl;
+
+    /**     Data fields
+     *
+     *  Sizeof: 24 bytes
+     *
+     *  @note   Data fields can be re-sized between different versions of application header.
+     */
+    struct
+    {
+        uint32_t sw_ver;        /**<Bootloader software version */
+        uint8_t  boot_reason;   /**<Boot reason. Shall be value of @boot_reason_t */
+        uint8_t  boot_cnt;      /**<Boot counter */
+        uint8_t  res[18];       /**<Reserved space */
+    } data;
 } boot_shared_mem_t;
+
+/**
+ *  Shared memory size check
+ */
+_Static_assert( 32 == sizeof(boot_shared_mem_t));
 
 #endif // __BOOT_TYPES_H
 
