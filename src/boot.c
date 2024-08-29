@@ -44,6 +44,8 @@
  *
  *  Support version V1.3.x up
  */
+
+// TODO: Update compatibility checks as revision submodule will become V2.0.0
 _Static_assert( 1 == VER_VER_MAJOR );
 _Static_assert( 3 <= VER_VER_MINOR );
 
@@ -52,6 +54,8 @@ _Static_assert( 3 <= VER_VER_MINOR );
  *
  *  Support version V1.1.x up
  */
+
+// TODO: Update compatibility checks!
 _Static_assert( 1 == VER_VER_MAJOR );
 _Static_assert( 1 <= VER_VER_MINOR );
 
@@ -59,6 +63,7 @@ _Static_assert( 1 <= VER_VER_MINOR );
  *  Compiler compatibility check
  */
 BOOT_CFG_STATIC_ASSERT( sizeof(boot_shared_mem_t) == 32U );
+BOOT_CFG_STATIC_ASSERT( sizeof(ver_app_header_t) == 256U );
 
 /**
  *      Shared memory layout version
@@ -326,7 +331,7 @@ static boot_status_t boot_fw_image_validate(void)
     static  ver_app_header_t app_header = {0};
 
     // Read application header
-    status = boot_app_head_read( &app_header );
+    status = boot_app_head_read((ver_app_header_t*) &app_header );
 
     // Application header OK
     if ( eBOOT_OK == status )
@@ -440,6 +445,8 @@ static void boot_init_shared_mem(void)
     {
         g_boot_shared_mem.data.boot_cnt      = 0U;
         g_boot_shared_mem.data.boot_reason   = eBOOT_REASON_NONE;
+
+       // BOOT_DBG_PRINT( "ERROR: Shared memory corrupted!" );
     }
 
     // Set shared mem version
@@ -847,6 +854,9 @@ void boot_com_prepare_msg_rcv_cb(const uint32_t fw_size, const uint32_t fw_ver, 
         // Check for HW version compatibility
         msg_status |= boot_hw_ver_check( hw_ver );
 
+        // Check authenticy (digital signature)
+        // TODO: ...
+
         // Everything OK
         if ( eBOOT_MSG_OK == msg_status )
         {
@@ -882,7 +892,6 @@ void boot_com_prepare_msg_rcv_cb(const uint32_t fw_size, const uint32_t fw_ver, 
 
     // Send prepare msg response
     boot_com_send_prepare_rsp( msg_status );
-
 
     BOOT_DBG_PRINT( "Prepare msg received...");
 }
@@ -1169,6 +1178,7 @@ boot_status_t boot_init(void)
     }
 
     // Initialize bootloader interfaces
+    // TODO: CHeck if makes sense to split memory interface with communication interface!?
     status |= boot_if_init();
 
     // Iniatilize (handle) boot counter
@@ -1183,11 +1193,19 @@ boot_status_t boot_init(void)
             // Back door entry for bootloader
             boot_wait( BOOT_CFG_WAIT_AT_STARTUP_MS );
 
-            // Jump to application
-            boot_start_application();
+            // Check if reason has change from the back door
+            if ( eBOOT_REASON_NONE == g_boot_shared_mem.data.boot_reason )
+            {
+                // Jump to application
+                boot_start_application();
+            }
 
-            // This line is not reached as cpu starts executing application code...
+            // This line is not reached as CPU starts executing application code...
         }
+    }
+    else
+    {
+        BOOT_DBG_PRINT( "Booting reason: %d", g_boot_shared_mem.data.boot_reason );
     }
 
     /**
