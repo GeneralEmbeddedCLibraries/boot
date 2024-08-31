@@ -451,7 +451,7 @@ static void boot_init_shared_mem(void)
 
     // Set shared memory data
     g_boot_shared_mem.ctrl.ver      = BOOT_SHARED_MEM_VER;
-    g_boot_shared_mem.data.boot_ver = version_get_sw( NULL, NULL, NULL, NULL );
+    g_boot_shared_mem.data.boot_ver = version_get_sw().U;
 
     // Calculate CRC
     g_boot_shared_mem.ctrl.crc = boot_shared_mem_calc_crc((const boot_shared_mem_t *) &g_boot_shared_mem );
@@ -1111,7 +1111,7 @@ void boot_com_info_msg_rcv_cb(void)
     // In IDLE state
     if ( eBOOT_STATE_IDLE == boot_get_state())
     {
-        boot_ver = version_get_sw( NULL, NULL, NULL, NULL );
+        boot_ver = version_get_sw().U;
     }
 
     // Not in IDLE state
