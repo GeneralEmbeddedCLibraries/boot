@@ -1421,6 +1421,43 @@ boot_status_t boot_shared_mem_get_boot_cnt(uint8_t * const p_cnt)
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
+*       Get bootloader version
+*
+* @note     Function return "eBOOT_ERROR_CRC" in case of shared memory
+*           data corruption!
+*
+* @param[out]   p_boot_ver  - Bootloader software verion
+* @return       status      - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
+boot_status_t boot_shared_mem_get_boot_ver(uint32_t * const p_boot_ver)
+{
+    boot_status_t status = eBOOT_OK;
+
+    BOOT_ASSERT( NULL != p_boot_ver );
+
+    if ( NULL != p_boot_ver )
+    {
+        // Validate shared memory
+        if ( g_boot_shared_mem.ctrl.crc == boot_shared_mem_calc_crc((const boot_shared_mem_t *) &g_boot_shared_mem ))
+        {
+            *p_boot_ver = g_boot_shared_mem.data.boot_ver;
+        }
+        else
+        {
+            status = eBOOT_ERROR_CRC;
+        }
+    }
+    else
+    {
+        status = eBOOT_ERROR;
+    }
+
+    return status;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
 * @} <!-- END GROUP -->
 */
 ////////////////////////////////////////////////////////////////////////////////
