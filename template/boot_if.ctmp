@@ -35,14 +35,14 @@
 #include <string.h>
 
 // HAL
-#include "stm32g4xx_hal.h"
+#include "stm32l4xx_hal.h"
 
 // Drivers
 #include "drivers/peripheral/gpio/gpio/src/gpio.h"
 #include "drivers/peripheral/flash/flash/src/flash.h"
 
 // Interface
-#include "interface/rs485/rs485.h"
+#include "drivers/peripheral/usbd/usbd/src/usbd.h"
 
 // Middleware
 #include "middleware/cli/cli/src/cli.h"
@@ -210,7 +210,7 @@ boot_status_t boot_if_init(void)
 
     // USER CODE BEGIN...
 
-    if ( eRS485_OK != rs485_init())
+    if ( eUSBD_OK != usbd_init())
     {
         status = eBOOT_ERROR;
     }
@@ -223,7 +223,7 @@ boot_status_t boot_if_init(void)
 #endif
 
     // Init flash driver
-    if ( eFLASH_OK != flash_init())
+    if ( eFLASH_OK != flash_init( 0U ))
     {
         status = eBOOT_ERROR;
     }
@@ -259,8 +259,8 @@ boot_status_t boot_if_deinit(void)
     // De-init gpio
     gpio_deinit();
 
-    // De-init RS-485
-    rs485_deinit();
+    // De-init usb
+    usbd_deinit();
 
     // Cli de-init
     cli_deinit();
@@ -297,7 +297,7 @@ boot_status_t boot_if_transmit(const uint8_t * const p_data, const uint16_t size
     // USER CODE BEGIN...
 
     // Transmit
-    if ( eRS485_OK != rs485_transmit( p_data, size ))
+    if ( eUSBD_OK != usbd_transmit( p_data, size ))
     {
         status = eBOOT_ERROR;
     }
@@ -324,7 +324,7 @@ boot_status_t boot_if_receive(uint8_t * const p_data)
     // USER CODE BEGIN...
 
     // Receive
-    if ( eRS485_OK != rs485_receive( p_data ))
+    if ( eUSBD_OK != usbd_receive( p_data ))
     {
         status = eBOOT_ERROR;
     }
@@ -347,7 +347,7 @@ boot_status_t boot_if_clear_rx_buf(void)
 
     // USER CODE BEGIN...
 
-    if ( eRS485_OK != rs485_reset_rx_buf())
+    if ( eUSBD_OK != usbd_clear_rx_buf())
     {
         status = eBOOT_ERROR;
     }
@@ -375,7 +375,7 @@ boot_status_t boot_if_flash_write(const uint32_t addr, const uint32_t size, cons
 
     // USER CODE BEGIN...
 
-    if ( eFLASH_OK != flash_write( addr, size, p_data ))
+    if ( eFLASH_OK != flash_write( 0U, addr, size, p_data ))
     {
         status = eBOOT_ERROR;
     }
@@ -403,7 +403,7 @@ boot_status_t boot_if_flash_read(const uint32_t addr, const uint32_t size, uint8
 
     // USER CODE BEGIN...
 
-    if ( eFLASH_OK != flash_read( addr, size, p_data ))
+    if ( eFLASH_OK != flash_read( 0U, addr, size, p_data ))
     {
         status = eBOOT_ERROR;
     }
@@ -430,7 +430,7 @@ boot_status_t boot_if_flash_erase(const uint32_t addr, const uint32_t size)
 
     // USER CODE BEGIN...
 
-    if ( eFLASH_OK != flash_erase( addr, size ))
+    if ( eFLASH_OK != flash_erase( 0U, addr, size ))
     {
         status = eBOOT_ERROR;
     }

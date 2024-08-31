@@ -34,7 +34,7 @@
 #include <assert.h>
 
 // HAL
-#include "stm32g4xx_hal.h"
+#include "stm32l4xx_hal.h"
 
 // debug port
 #include "middleware/cli/cli/src/cli.h"
@@ -50,21 +50,29 @@
 /**
  *      Application header address in flash
  */
-#define BOOT_CFG_APP_HEAD_ADDR                  ( 0x08008000 )
+#define BOOT_CFG_APP_HEAD_ADDR                  ( 0x08010000 )
 
 /**
- *      Application header size
+ *      Start of application address
+ *
+ *  @note   This is where vector table is starting!
+ *
+ *  @note   For some uC vector offseting must be multiple of sizes larger
+ *          than aplication header (which is 256 bytes in size). Therefore
+ *          for such uC there will be void between application header and
+ *          application start aka. vector table. Therefore application start
+ *          address might not be at the end of application header!
+ */
+#define BOOT_CFG_APP_START_ADDR                     ( 0x08010200 )
+
+/**
+ *      Maximum allowed application size
+ *
+ *  @brief  How much space do we have in memory for application code.
  *
  *  Unit: byte
  */
-#define BOOT_CFG_APP_HEAD_SIZE                  ( 0x200 )
-
-/**
- *      Complete (maximum) application size
- *
- *  Unit: byte
- */
-#define BOOT_CFG_APP_SIZE                       (( 128U - 32U - 2U ) * 1024U )  // NOTE: 32kB bootloader, 2kB data section
+#define BOOT_CFG_APP_SIZE_MAX                       ( 446U * 1024U )   // NOTE: 478kB = 512kB (Full flash) - 64kB (bootloader) - 2kB (DCT)
 
 /**
  *      Enable/Disable new firmware size check
@@ -125,7 +133,7 @@
  * @note    Boot count is safety mechanism build into bootloader
  *          in order to detect malfunctional application!
  */
-#define BOOT_CFG_APP_BOOT_CNT_CHECK_EN          ( 0 )
+#define BOOT_CFG_APP_BOOT_CNT_CHECK_EN          ( 1 )
 
 /**
  *      Boot counts limit
@@ -163,23 +171,23 @@
  *
  *  Unit: ms
  */
-#define BOOT_CFG_PREPARE_IDLE_TIMEOUT_MS        ( 3000U )
+#define BOOT_CFG_PREPARE_IDLE_TIMEOUT_MS        ( 5000U )       // TODO: adjust these timings!!!!
 #define BOOT_CFG_FLASH_IDLE_TIMEOUT_MS          ( 100U )
-#define BOOT_CFG_EXIT_IDLE_TIMEOUT_MS           ( 500U )
+#define BOOT_CFG_EXIT_IDLE_TIMEOUT_MS           ( 5000U )
 
 /**
  *      Reception buffer size
  *
  *  Unit: byte
  */
-#define BOOT_CFG_RX_BUF_SIZE                    ( 1024 )
+#define BOOT_CFG_RX_BUF_SIZE                    ( 8 * 1024 )
 
 /**
  *      Maximum size of flash data payload command
  *
  *  Unit: byte
  */
-#define BOOT_CFG_DATA_PAYLOAD_SIZE              ( 256 )
+#define BOOT_CFG_DATA_PAYLOAD_SIZE              ( 1024 )
 
 /**
  *  Jump to application (if valid) if communication idle
@@ -207,6 +215,11 @@
 #define __BOOT_CFG_WEAK__                        __attribute__((weak))
 
 /**
+ *  Packet compiler directive
+ */
+#define __BOOT_CFG_PACKED__                     __attribute__((__packed__))
+
+/**
  *  Shared memory section directive for linker
  */
 #define __BOOT_CFG_SHARED_MEM__                	__attribute__((section(".shared_mem")))
@@ -214,7 +227,7 @@
 /**
  *  Enable/Disable firmware binary encryption
  */
-#define BOOT_CFG_CRYPTION_EN                    ( 1 )
+#define BOOT_CFG_CRYPTION_EN                    ( 0 )
 
 /**
  *      Enable/Disable debug mode
