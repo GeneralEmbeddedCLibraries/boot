@@ -102,8 +102,8 @@ typedef struct __BOOT_CFG_PACKED__
      */
     struct
     {
-        uint8_t ver;    /**<Shared memory layout version */
         uint8_t crc;    /**<CRC8 of shared memory */
+        uint8_t ver;    /**<Shared memory layout version */
         uint8_t res[6]; /**<Reserved fields */
     } ctrl;
 
@@ -115,7 +115,7 @@ typedef struct __BOOT_CFG_PACKED__
      */
     struct
     {
-        uint32_t sw_ver;        /**<Bootloader software version */
+        uint32_t boot_ver;      /**<Bootloader software version */
         uint8_t  boot_reason;   /**<Boot reason. Shall be value of @boot_reason_t */
         uint8_t  boot_cnt;      /**<Boot counter */
         uint8_t  res[18];       /**<Reserved space */

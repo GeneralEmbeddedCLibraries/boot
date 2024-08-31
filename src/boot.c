@@ -446,11 +446,12 @@ static void boot_init_shared_mem(void)
         g_boot_shared_mem.data.boot_cnt      = 0U;
         g_boot_shared_mem.data.boot_reason   = eBOOT_REASON_NONE;
 
-       // BOOT_DBG_PRINT( "ERROR: Shared memory corrupted!" );
+        BOOT_DBG_PRINT( "ERROR: Shared memory corrupted!" );
     }
 
-    // Set shared mem version
-    g_boot_shared_mem.ctrl.ver = BOOT_SHARED_MEM_VER;
+    // Set shared memory data
+    g_boot_shared_mem.ctrl.ver      = BOOT_SHARED_MEM_VER;
+    g_boot_shared_mem.data.boot_ver = version_get_sw( NULL, NULL, NULL, NULL );
 
     // Calculate CRC
     g_boot_shared_mem.ctrl.crc = boot_shared_mem_calc_crc((const boot_shared_mem_t *) &g_boot_shared_mem );
@@ -860,6 +861,13 @@ void boot_com_prepare_msg_rcv_cb(const uint32_t fw_size, const uint32_t fw_ver, 
         // Everything OK
         if ( eBOOT_MSG_OK == msg_status )
         {
+
+            // TODO: Split flash erase into individual segments and kick wdt in between!!!
+
+            //uint32_t addr = BOOT_CFG_APP_HEAD_ADDR + sector_size;
+
+            //flash_erase( addr, sector_size );
+
             // Erase application region flash
             if ( eBOOT_OK != boot_if_flash_erase( BOOT_CFG_APP_HEAD_ADDR, BOOT_CFG_APP_SIZE_MAX ))
             {
