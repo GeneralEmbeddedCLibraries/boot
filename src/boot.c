@@ -128,6 +128,8 @@ static p_fsm_t g_boot_fsm = NULL;
  */
 static const fsm_cfg_t g_boot_fsm_cfg_table =
 {
+
+    // TODO: Profile states...
     .p_states = (fsm_state_cfg_t[])
     {
         [eBOOT_STATE_IDLE]      = {.on_entry=NULL, .on_activity=boot_fsm_idle_hndl,     .on_exit=NULL, .name="IDLE"     },
@@ -640,13 +642,10 @@ static void boot_init_boot_counter(void)
 ////////////////////////////////////////////////////////////////////////////////
 static void boot_fsm_idle_hndl(const p_fsm_t fsm_inst)
 {
-    // Unused
-    (void) fsm_inst;
-
     static bool try_to_leave = false;
 
     // On first entry
-    if ( true == fsm_get_first_entry( g_boot_fsm ))
+    if ( true == fsm_get_first_entry( fsm_inst ))
     {
         // Clear flashing data informations
         memset( &g_boot_flashing, 0U, sizeof( g_boot_flashing ));
@@ -661,7 +660,7 @@ static void boot_fsm_idle_hndl(const p_fsm_t fsm_inst)
     }
 
     // Get idle time duration
-    const uint32_t idle_duration = fsm_get_duration( g_boot_fsm );
+    const uint32_t idle_duration = fsm_get_duration( fsm_inst );
 
     // Exit bootloader if idle for too long, but try only once
     if  (   ( idle_duration >= BOOT_CFG_JUMP_TO_APP_TIMEOUT_MS )
@@ -693,11 +692,8 @@ static void boot_fsm_idle_hndl(const p_fsm_t fsm_inst)
 ////////////////////////////////////////////////////////////////////////////////
 static void boot_fsm_prepare_hndl(const p_fsm_t fsm_inst)
 {
-    // Unused
-    (void) fsm_inst;
-
     // Get time in that state
-    const uint32_t state_duration = fsm_get_duration( g_boot_fsm );
+    const uint32_t state_duration = fsm_get_duration( fsm_inst );
 
     // Boot process idle for too long -> enter IDLE
     if ( state_duration >= BOOT_CFG_PREPARE_IDLE_TIMEOUT_MS )
@@ -709,6 +705,13 @@ static void boot_fsm_prepare_hndl(const p_fsm_t fsm_inst)
 
         BOOT_DBG_PRINT( "ERROR: Prepare state timeouted!" );
     }
+
+
+
+
+
+
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -721,13 +724,10 @@ static void boot_fsm_prepare_hndl(const p_fsm_t fsm_inst)
 ////////////////////////////////////////////////////////////////////////////////
 static void boot_fsm_flash_hndl(const p_fsm_t fsm_inst)
 {
-    // Unused
-    (void) fsm_inst;
-
     // Get time in that state
-    const uint32_t state_duration = fsm_get_duration( g_boot_fsm );
+    const uint32_t state_duration = fsm_get_duration( fsm_inst );
 
-    // Calcualte time pass from last rx packet
+    // Calculate time pass from last rx packet
     const uint32_t time_from_last_rx = (uint32_t) ( BOOT_GET_SYSTICK() - boot_com_get_last_rx_timestamp());
 
     // After a while in flash state
@@ -756,11 +756,8 @@ static void boot_fsm_flash_hndl(const p_fsm_t fsm_inst)
 ////////////////////////////////////////////////////////////////////////////////
 static void boot_fsm_exit_hndl(const p_fsm_t fsm_inst)
 {
-    // Unused
-    (void) fsm_inst;
-
     // Get time in that state
-    const uint32_t state_duration = fsm_get_duration( g_boot_fsm );
+    const uint32_t state_duration = fsm_get_duration( fsm_inst );
 
     // Boot process idle for too long -> enter IDLE
     if ( state_duration >= BOOT_CFG_EXIT_IDLE_TIMEOUT_MS )
@@ -836,6 +833,11 @@ void boot_com_connect_rsp_msg_rcv_cb(const boot_msg_status_t msg_status)
 * @param[in]    fw_size     - Firmware size in bytes
 * @param[in]    fw_ver      - Firmware version
 * @param[in]    hw_ver      - Hardware version
+*
+*  TODO: Image info as input, where all related info shall be passed!
+*
+*       Image address as well -> this shall setup "g_boot_flashing.working_addr"
+*
 * @return       void
 */
 ////////////////////////////////////////////////////////////////////////////////
