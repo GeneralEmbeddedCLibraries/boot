@@ -63,7 +63,7 @@ _Static_assert( 1 <= VER_VER_MINOR );
  *  Compiler compatibility check
  */
 BOOT_CFG_STATIC_ASSERT( sizeof(boot_shared_mem_t) == 32U );
-BOOT_CFG_STATIC_ASSERT( sizeof(ver_app_header_t) == 256U );
+BOOT_CFG_STATIC_ASSERT( sizeof(ver_image_header_t) == 256U );
 
 /**
  *      Shared memory layout version
@@ -89,9 +89,9 @@ typedef struct
 // Function prototypes
 ////////////////////////////////////////////////////////////////////////////////
 static uint8_t              boot_calc_crc               (const uint8_t * const p_data, const uint16_t size);
-static boot_status_t        boot_app_head_read          (ver_app_header_t * const p_head);
+static boot_status_t        boot_app_head_read          (ver_image_header_t * const p_head);
 static boot_status_t        boot_app_head_erase         (void);
-static uint8_t              boot_app_head_calc_crc      (const ver_app_header_t * const p_head);
+static uint8_t              boot_app_head_calc_crc      (const ver_image_header_t * const p_head);
 static uint32_t             boot_fw_image_calc_crc      (const uint32_t size);
 static boot_status_t        boot_fw_image_validate      (void);
 static boot_status_t        boot_start_application      (void);
@@ -193,12 +193,12 @@ static uint8_t boot_calc_crc(const uint8_t * const p_data, const uint16_t size)
 * @return       status	- Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
-static boot_status_t boot_app_head_read(ver_app_header_t * const p_head)
+static boot_status_t boot_app_head_read(ver_image_header_t * const p_head)
 {
     boot_status_t status = eBOOT_OK;
 
     // Read application header
-    if ( eBOOT_OK == boot_if_flash_read( BOOT_CFG_APP_HEAD_ADDR, sizeof(ver_app_header_t), (uint8_t*) p_head ))
+    if ( eBOOT_OK == boot_if_flash_read( BOOT_CFG_APP_HEAD_ADDR, sizeof(ver_image_header_t), (uint8_t*) p_head ))
     {
         // Calculate application header crc
         const uint8_t app_head_crc_calc = boot_app_head_calc_crc( p_head );
@@ -235,7 +235,7 @@ static boot_status_t boot_app_head_erase(void)
     boot_status_t status = eBOOT_OK;
 
     // Erase application header
-    if ( eBOOT_OK != boot_if_flash_erase( BOOT_CFG_APP_HEAD_ADDR, sizeof(ver_app_header_t)))
+    if ( eBOOT_OK != boot_if_flash_erase( BOOT_CFG_APP_HEAD_ADDR, sizeof(ver_image_header_t)))
     {
         status = eBOOT_ERROR;
     }
@@ -251,13 +251,13 @@ static boot_status_t boot_app_head_erase(void)
 * @return       crc8    - CRC8 of application header
 */
 ////////////////////////////////////////////////////////////////////////////////
-static uint8_t boot_app_head_calc_crc(const ver_app_header_t * const p_head)
+static uint8_t boot_app_head_calc_crc(const ver_image_header_t * const p_head)
 {
     uint8_t crc8 = 0U;
 
     // Calculate CRC
     // NOTE: Skip CRC at the end and start calculation at version field!
-    crc8 = boot_calc_crc((uint8_t*) &(p_head->ctrl.ver), ( sizeof(ver_app_header_t) - 1U ));
+    crc8 = boot_calc_crc((uint8_t*) &(p_head->ctrl.ver), ( sizeof(ver_image_header_t) - 1U ));
 
     return crc8;
 }
@@ -284,12 +284,12 @@ static uint32_t boot_fw_image_calc_crc(const uint32_t size)
             uint8_t     data    = 0U;
 
     // Calculate size of app image without application header
-    const uint32_t app_size = ( size - sizeof(ver_app_header_t));
+    const uint32_t app_size = ( size - sizeof(ver_image_header_t));
 
     for (uint32_t i = 0; i < app_size; i++)
     {
     	// Ignore application header from CRC calc
-        const uint32_t addr = BOOT_CFG_APP_HEAD_ADDR + sizeof(ver_app_header_t) + i;
+        const uint32_t addr = BOOT_CFG_APP_HEAD_ADDR + sizeof(ver_image_header_t) + i;
 
         // Read byte from application
         (void) boot_if_flash_read( addr, 1U, (uint8_t*)&data );
@@ -330,19 +330,19 @@ static uint32_t boot_fw_image_calc_crc(const uint32_t size)
 static boot_status_t boot_fw_image_validate(void)
 {
             boot_status_t    status = eBOOT_OK;
-    static  ver_app_header_t app_header = {0};
+    static  ver_image_header_t app_header = {0};
 
     // Read application header
-    status = boot_app_head_read((ver_app_header_t*) &app_header );
+    status = boot_app_head_read((ver_image_header_t*) &app_header );
 
     // Application header OK
     if ( eBOOT_OK == status )
     {
     	// Calculate firmware image crc
-    	const uint32_t fw_crc_calc = boot_fw_image_calc_crc( app_header.data.app_size );
+    	const uint32_t fw_crc_calc = boot_fw_image_calc_crc( app_header.data.image_size );
 
     	// FW image CRC valid
-    	if ( app_header.data.app_crc == fw_crc_calc )
+    	if ( app_header.data.image_crc == fw_crc_calc )
     	{
     		BOOT_DBG_PRINT( "Firmware image OK!" );
     	}
@@ -548,7 +548,7 @@ static boot_msg_status_t boot_fw_ver_check(const uint32_t fw_ver)
 
 #if ( 0 == BOOT_CFG_FW_DOWNGRADE_EN )
 
-        static ver_app_header_t app_header = {0};
+        static ver_image_header_t app_header = {0};
 
         // Application header valid
         if ( eBOOT_OK == boot_app_head_read( &app_header ))
