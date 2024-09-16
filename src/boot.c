@@ -56,8 +56,8 @@ _Static_assert( 3 <= VER_VER_MINOR );
  */
 
 // TODO: Update compatibility checks!
-_Static_assert( 1 == VER_VER_MAJOR );
-_Static_assert( 1 <= VER_VER_MINOR );
+_Static_assert( 1 == FSM_VER_MAJOR );
+_Static_assert( 1 <= FSM_VER_MINOR );
 
 /**
  *  Compiler compatibility check
@@ -89,9 +89,14 @@ typedef struct
 // Function prototypes
 ////////////////////////////////////////////////////////////////////////////////
 static uint8_t              boot_calc_crc               (const uint8_t * const p_data, const uint16_t size);
-static boot_status_t        boot_app_head_read          (ver_image_header_t * const p_head);
+
+static boot_status_t        boot_app_head_read          (const ver_image_header_t * p_head);
 static boot_status_t        boot_app_head_erase         (void);
-static uint8_t              boot_app_head_calc_crc      (const ver_image_header_t * const p_head);
+
+// TODO: ...
+//static uint8_t              boot_app_head_calc_crc      (const ver_image_header_t * const p_head);
+
+
 static uint32_t             boot_fw_image_calc_crc      (const uint32_t size);
 static boot_status_t        boot_fw_image_validate      (void);
 static boot_status_t        boot_start_application      (void);
@@ -193,10 +198,21 @@ static uint8_t boot_calc_crc(const uint8_t * const p_data, const uint16_t size)
 * @return       status	- Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
-static boot_status_t boot_app_head_read(ver_image_header_t * const p_head)
+static boot_status_t boot_app_head_read(const ver_image_header_t * p_head)
 {
     boot_status_t status = eBOOT_OK;
 
+    // Get application header
+    p_head = version_get_img_header();
+
+    // Check if
+    if ( NULL == p_head )
+    {
+        status = eBOOT_ERROR;
+    }
+
+    // TODO:
+#if 0
     // Read application header
     if ( eBOOT_OK == boot_if_flash_read( BOOT_CFG_APP_HEAD_ADDR, sizeof(ver_image_header_t), (uint8_t*) p_head ))
     {
@@ -215,6 +231,7 @@ static boot_status_t boot_app_head_read(ver_image_header_t * const p_head)
     {
         status = eBOOT_ERROR;
     }
+#endif
 
     return status;
 }
@@ -243,6 +260,9 @@ static boot_status_t boot_app_head_erase(void)
     return status;
 }
 
+
+//TODO:
+#if 0
 ////////////////////////////////////////////////////////////////////////////////
 /**
 *       Calculate application header CRC
@@ -261,6 +281,7 @@ static uint8_t boot_app_head_calc_crc(const ver_image_header_t * const p_head)
 
     return crc8;
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -329,20 +350,23 @@ static uint32_t boot_fw_image_calc_crc(const uint32_t size)
 ////////////////////////////////////////////////////////////////////////////////
 static boot_status_t boot_fw_image_validate(void)
 {
-            boot_status_t    status = eBOOT_OK;
-    static  ver_image_header_t app_header = {0};
+    boot_status_t    status = eBOOT_OK;
+    const ver_image_header_t * p_head = NULL;
+
+
+    //static  ver_image_header_t app_header = {0};
 
     // Read application header
-    status = boot_app_head_read((ver_image_header_t*) &app_header );
+    status = boot_app_head_read( p_head );
 
     // Application header OK
     if ( eBOOT_OK == status )
     {
     	// Calculate firmware image crc
-    	const uint32_t fw_crc_calc = boot_fw_image_calc_crc( app_header.data.image_size );
+    	const uint32_t fw_crc_calc = boot_fw_image_calc_crc( p_head->data.image_size );
 
     	// FW image CRC valid
-    	if ( app_header.data.image_crc == fw_crc_calc )
+    	if ( p_head->data.image_crc == fw_crc_calc )
     	{
     		BOOT_DBG_PRINT( "Firmware image OK!" );
     	}
@@ -869,6 +893,8 @@ void boot_com_prepare_msg_rcv_cb(const uint32_t fw_size, const uint32_t fw_ver, 
             //uint32_t addr = BOOT_CFG_APP_HEAD_ADDR + sector_size;
 
             //flash_erase( addr, sector_size );
+
+            // TODO: Add support for flash submodule to raise callbacks on erase finish...
 
             // Erase application region flash
             if ( eBOOT_OK != boot_if_flash_erase( BOOT_CFG_APP_HEAD_ADDR, BOOT_CFG_APP_SIZE_MAX ))
