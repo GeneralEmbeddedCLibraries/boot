@@ -41,19 +41,23 @@ APP_HEADER_VER_EXPECTED         = 1
 # Application header addresses
 APP_HEADER_CRC_ADDR             = 0x00
 APP_HEADER_VER_ADDR             = 0x01
+APP_HEADER_IMG_TYPE_ADDR        = 0x02  # Image type [0-Application, 1-Custom]
 
 # Application header data fields
-APP_HEADER_SW_VER_ADDR          = 0x08
-APP_HEADER_HW_VER_ADDR          = 0x0C
-APP_HEADER_APP_SIZE_ADDR        = 0x10
-APP_HEADER_APP_CRC_ADDR         = 0x14
-APP_HEADER_ENC_TYPE             = 0x18
-APP_HEADER_SIG_TYPE             = 0x1C
-APP_HEADER_SIG_SHA256           = 0x20
-
+# For more info about image header look at Revision module specifications: "revision\doc\Revision_Specifications.xlsx"
+APP_HEADER_SW_VER_ADDR          = 0x08  # Software version
+APP_HEADER_HW_VER_ADDR          = 0x0C  # Hardware version
+APP_HEADER_SIZE_ADDR            = 0x10  # Image size in bytes
+APP_HEADER_IMAGE_ADDR_ADDR      = 0x14  # Image address in case of "custom", for application left empty
+APP_HEADER_IMAGE_CRC_ADDR       = 0x18  # Image CRC32
+APP_HEADER_ENC_TYPE_ADDR        = 0x1C  # Encryption type [0-None, 1-AES-CTR]
+APP_HEADER_SIG_TYPE_ADDR        = 0x1D  # Signature type [0-None, 1-ECSDA]
+APP_HEADER_SIGNATURE_ADDR       = 0x1E  # Signature of the image. Size: 64 bytes
+APP_HEADER_HASH_ADDR            = 0x5E  # Image hash - SHA256. Size: 32 bytes
+APP_HEADER_GIT_SHA_ADDR         = 0x7E  # Git commit hash. Size: 8 byte
 
 # Application header size in bytes
-APP_HEADER_SIZE_BYTE            = 0x100 #256 bytes
+APP_HEADER_SIZE_BYTE            = 256 # bytes
 
 # Enable padding
 PAD_ENABLE                      = True
@@ -291,10 +295,10 @@ def main():
             app_crc = calc_crc32( out_file.read( APP_HEADER_SIZE_BYTE, None ))
 
             # Write app lenght into application header
-            out_file.write( APP_HEADER_APP_SIZE_ADDR, struct.pack('I', int(app_size)))
+            out_file.write( APP_HEADER_SIZE_ADDR, struct.pack('I', int(app_size)))
 
             # Write app CRC into application header
-            out_file.write( APP_HEADER_APP_CRC_ADDR, struct.pack('I', int(app_crc)))
+            out_file.write( APP_HEADER_IMAGE_CRC_ADDR, struct.pack('I', int(app_crc)))
 
             # Calculate application header CRC
             # NOTE: Ignore first field as it is CRC value itself!
