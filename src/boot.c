@@ -89,13 +89,9 @@ typedef struct
 // Function prototypes
 ////////////////////////////////////////////////////////////////////////////////
 static uint8_t              boot_calc_crc               (const uint8_t * const p_data, const uint16_t size);
-
 static boot_status_t        boot_app_head_read          (const ver_image_header_t * p_head);
 static boot_status_t        boot_app_head_erase         (void);
-
-// TODO: ...
-//static uint8_t              boot_app_head_calc_crc      (const ver_image_header_t * const p_head);
-
+static uint8_t              boot_app_head_calc_crc      (const ver_image_header_t * const p_head);
 
 static uint32_t             boot_fw_image_calc_crc      (const uint32_t size);
 static boot_status_t        boot_fw_image_validate      (void);
@@ -202,17 +198,6 @@ static boot_status_t boot_app_head_read(const ver_image_header_t * p_head)
 {
     boot_status_t status = eBOOT_OK;
 
-    // Get application header
-    p_head = version_get_img_header();
-
-    // Check if
-    if ( NULL == p_head )
-    {
-        status = eBOOT_ERROR;
-    }
-
-    // TODO:
-#if 0
     // Read application header
     if ( eBOOT_OK == boot_if_flash_read( BOOT_CFG_APP_HEAD_ADDR, sizeof(ver_image_header_t), (uint8_t*) p_head ))
     {
@@ -231,7 +216,6 @@ static boot_status_t boot_app_head_read(const ver_image_header_t * p_head)
     {
         status = eBOOT_ERROR;
     }
-#endif
 
     return status;
 }
@@ -260,9 +244,6 @@ static boot_status_t boot_app_head_erase(void)
     return status;
 }
 
-
-//TODO:
-#if 0
 ////////////////////////////////////////////////////////////////////////////////
 /**
 *       Calculate application header CRC
@@ -281,7 +262,6 @@ static uint8_t boot_app_head_calc_crc(const ver_image_header_t * const p_head)
 
     return crc8;
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -350,44 +330,41 @@ static uint32_t boot_fw_image_calc_crc(const uint32_t size)
 ////////////////////////////////////////////////////////////////////////////////
 static boot_status_t boot_fw_image_validate(void)
 {
-    boot_status_t    status = eBOOT_OK;
-    const ver_image_header_t * p_head = NULL;
-
-
-    //static  ver_image_header_t app_header = {0};
+            boot_status_t       status      = eBOOT_OK;
+    static  ver_image_header_t  app_header  = {0};
 
     // Read application header
-    status = boot_app_head_read( p_head );
+    status = boot_app_head_read((ver_image_header_t*) &app_header );
 
     // Application header OK
     if ( eBOOT_OK == status )
     {
-    	// Calculate firmware image crc
-    	const uint32_t fw_crc_calc = boot_fw_image_calc_crc( p_head->data.image_size );
+        // Calculate firmware image crc
+        const uint32_t fw_crc_calc = boot_fw_image_calc_crc( app_header.data.image_size );
 
-    	// FW image CRC valid
-    	if ( p_head->data.image_crc == fw_crc_calc )
-    	{
-    		BOOT_DBG_PRINT( "Firmware image OK!" );
-    	}
+        // FW image CRC valid
+        if ( app_header.data.image_crc == fw_crc_calc )
+        {
+            BOOT_DBG_PRINT( "Firmware image OK!" );
+        }
 
-    	// FW image corrupted
-    	else
-    	{
-        	status = eBOOT_ERROR_CRC;
+        // FW image corrupted
+        else
+        {
+            status = eBOOT_ERROR_CRC;
 
             /**
              *  Erase application header -> This will enable re-flashing
              *  same version of application as FW compatibility checks
              *  will not failed!
              */
-        	(void) boot_app_head_erase();
+            (void) boot_app_head_erase();
 
-        	BOOT_DBG_PRINT( "ERROR: Firmware image corrupted!" );
-    	}
+            BOOT_DBG_PRINT( "ERROR: Firmware image corrupted!" );
+        }
     }
 
-	return status;
+    return status;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
