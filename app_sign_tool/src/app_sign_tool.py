@@ -62,6 +62,14 @@ APP_HEADER_SIGNATURE_ADDR       = 0x1E  # Signature of the image. Size: 64 bytes
 APP_HEADER_HASH_ADDR            = 0x5E  # Image hash - SHA256. Size: 32 bytes
 APP_HEADER_GIT_SHA_ADDR         = 0x7E  # Git commit hash. Size: 8 byte
 
+# Encryption types
+ENC_TYPE_NONE = 0
+ENC_TYPE_AES_CTR = 1
+
+# Digital signature types
+DIG_SIG_TYPE_NONE = 0
+DIG_SIG_TYPE_ECDSA = 1
+
 # Application header size in bytes
 APP_HEADER_SIZE_BYTE            = 256 # bytes
 
@@ -323,13 +331,6 @@ def main():
             # Write app CRC into application header
             out_file.write( APP_HEADER_IMAGE_CRC_ADDR, struct.pack('I', int(app_crc)))
 
-            # Calculate application header CRC
-            # NOTE: Ignore first field as it is CRC value itself!
-            app_header_crc = calc_crc8( out_file.read( 1, APP_HEADER_SIZE_BYTE - 1 ))
-
-            # Write application header crc
-            out_file.write( APP_HEADER_CRC_ADDR, [app_header_crc] )
-
             # Success info
             print("SUCCESS: Image (application) header successfully filled!")
 
@@ -348,9 +349,21 @@ def main():
                 out_file.write( APP_HEADER_SIGNATURE_ADDR, signature )
 
                 # Add signature type
-                # TODO: Add enum
-                out_file.write( APP_HEADER_SIG_TYPE_ADDR, [1] )
+                out_file.write( APP_HEADER_SIG_TYPE_ADDR, [DIG_SIG_TYPE_ECDSA] )
 
+                # Succes info
+                print("SUCCESS: Firmware image successfully signed!")  
+
+            # Add encryption type if encryption enabled
+            if crypto_en:
+                out_file.write( APP_HEADER_ENC_TYPE_ADDR, [ENC_TYPE_AES_CTR] )  
+
+            # Calculate application header CRC after all fields are header fields are setup!
+            # NOTE: Ignore first field as it is CRC value itself!
+            app_header_crc = calc_crc8( out_file.read( 1, APP_HEADER_SIZE_BYTE - 1 ))
+
+            # Write application header crc
+            out_file.write( APP_HEADER_CRC_ADDR, [app_header_crc] )
 
             # Encrypt binary image
             if crypto_en:
@@ -363,22 +376,18 @@ def main():
 
                 # Create crypted binary file
                 file_path_crypted_out = out_file_path + out_file_name + "_CRYPTED." + out_file_extension
-                
-                # Open crypted output
-                file_crypted_out = open(file_path_crypted_out, "wb")
+
+                # Open outputed binary file
+                file_crypted_out = BinFile( file_path_crypted_out, access=BinFile.WRITE_ONLY)                
 
                 # Copy application header to crypted output file
                 # NOTE: Application header is not crypted!
-                file_crypted_out.write( out_file.read( 0, APP_HEADER_SIZE_BYTE ))
+                file_crypted_out.write( 0, out_file.read( 0, APP_HEADER_SIZE_BYTE ))
 
                 # Encrypt application part, skip application header
-                file_crypted_out.write( aes_encode( out_file.read( APP_HEADER_SIZE_BYTE, out_file.size() - APP_HEADER_SIZE_BYTE )))
+                file_crypted_out.write( APP_HEADER_SIZE_BYTE, aes_encode( out_file.read( APP_HEADER_SIZE_BYTE, out_file.size() - APP_HEADER_SIZE_BYTE )))
 
-                # Add encryption type
-                # TODO: Add enum
-                file_crypted_out.write( APP_HEADER_ENC_TYPE_ADDR, [1] )                
-
-                # Success info
+                # Succes info
                 print("SUCCESS: Firmware image successfully crypted!")    
 
             print("")           
