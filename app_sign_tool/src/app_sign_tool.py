@@ -24,6 +24,12 @@ from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
 from Crypto.Util import Counter
 
+import hashlib
+from ecdsa import SigningKey
+from ecdsa.util import sigencode_string
+from binascii import hexlify
+
+
 #################################################################################################
 ##  DEFINITIONS
 #################################################################################################
@@ -88,9 +94,11 @@ def arg_parser():
                                         epilog="Enjoy the program!")
 
     # Add arguments
-    parser.add_argument("-f",   help="Input binary file",           metavar="bin_in",           type=str,   required=True )
-    parser.add_argument("-o",   help="Output signed binary file",   metavar="bin_out",          type=str,   required=True )
-    parser.add_argument("-c",   help="Encrypt binary file",         action="store_true",        required=False )
+    parser.add_argument("-f", help="Input binary file", metavar="bin_in", type=str, required=True )
+    parser.add_argument("-o", help="Output binary file. Filling only image (application) header", metavar="bin_out", type=str, required=True )
+    parser.add_argument("-s", help="Signing (ECSDA) binary file", action="store_true", required=False )
+    parser.add_argument("-private_key", help="Private key for signature", metavar="private_key", required=False )    
+    parser.add_argument("-c", help="Encrypt (AES-CTR) binary file", action="store_true", required=False )
 
     # Get args
     args = parser.parse_args()
@@ -102,7 +110,7 @@ def arg_parser():
     file_in     = args["f"]
     file_out    = args["o"]
 
-    return file_in, file_out, args["c"]
+    return file_in, file_out, args["c"], args["s"], args["private_key"]
 
 # ===============================================================================
 # @brief  Calculate CRC-32
@@ -239,6 +247,17 @@ class BinFile:
         self.file.seek(offset)                    
 
 
+def gen_binary_signature(data, key_filename):
+
+    with open(key_filename, "r") as f:
+        key_pem = f.read()
+
+    key = SigningKey.from_pem(key_pem)
+    sig = key.sign_deterministic(data, hashfunc=hashlib.sha256, sigencode=sigencode_string)
+
+    return bytearray( sig )
+
+
 # ===============================================================================
 # @brief:  Main 
 #
@@ -252,11 +271,15 @@ def main():
     print("====================================================================")
 
     # Get arguments
-    file_path_in, file_path_out, crypto_en = arg_parser()
+    file_path_in, file_path_out, crypto_en, sign_en, private_key = arg_parser()
 
     # Check for correct file extension 
     if "bin" != file_path_in.split(".")[-1] or "bin" != file_path_out.split(".")[-1]:
         print( "ERROR: Invalid file format" )
+        raise RuntimeError 
+    
+    if True == sign_en and None == private_key:
+        print( "ERROR: Missing private key when application signing is enabled!" )
         raise RuntimeError 
     
     # Both files are binary
@@ -308,7 +331,26 @@ def main():
             out_file.write( APP_HEADER_CRC_ADDR, [app_header_crc] )
 
             # Success info
-            print("SUCCESS: Firmware image successfully signed!")
+            print("SUCCESS: Image (application) header successfully filled!")
+
+            # Signing application
+            if sign_en:
+                
+                # Create signature
+                signature = gen_binary_signature( out_file.read( APP_HEADER_SIZE_BYTE, ( out_file.size() - APP_HEADER_SIZE_BYTE )), private_key )
+
+                #for s in signature:
+                #    print("%02X" % ( s ))
+                    #print("%02X %02X %02X %02X %02X %02X %02X %02X" % ( s ))
+                print( "Signature: %s" % signature )
+
+                # Add signature to application header
+                out_file.write( APP_HEADER_SIGNATURE_ADDR, signature )
+
+                # Add signature type
+                # TODO: Add enum
+                out_file.write( APP_HEADER_SIG_TYPE_ADDR, [1] )
+
 
             # Encrypt binary image
             if crypto_en:
@@ -325,8 +367,16 @@ def main():
                 # Open crypted output
                 file_crypted_out = open(file_path_crypted_out, "wb")
 
-                # Open outputed crypted binary file
-                file_crypted_out.write( aes_encode( out_file.read( 0, out_file.size())))
+                # Copy application header to crypted output file
+                # NOTE: Application header is not crypted!
+                file_crypted_out.write( out_file.read( 0, APP_HEADER_SIZE_BYTE ))
+
+                # Encrypt application part, skip application header
+                file_crypted_out.write( aes_encode( out_file.read( APP_HEADER_SIZE_BYTE, out_file.size() - APP_HEADER_SIZE_BYTE )))
+
+                # Add encryption type
+                # TODO: Add enum
+                file_crypted_out.write( APP_HEADER_ENC_TYPE_ADDR, [1] )                
 
                 # Success info
                 print("SUCCESS: Firmware image successfully crypted!")    
