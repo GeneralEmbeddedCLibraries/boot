@@ -207,8 +207,11 @@ class BinFile:
         self.file_name = file
 
         try:
+            # Open file if exsist
             if os.path.isfile(file):
                 self.file = open( file, access )
+            else:
+                self.file = open( file, BinFile.WRITE_ONLY )
         except Exception as e:
             print(e)
 
