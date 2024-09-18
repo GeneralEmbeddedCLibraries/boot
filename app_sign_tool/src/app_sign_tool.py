@@ -307,6 +307,11 @@ def main():
             # Count application size
             app_size = out_file.size()
 
+
+            ######################################################################################
+            ## IMAGE PADDING
+            ######################################################################################
+
             # Is pad enable
             if PAD_ENABLE:
 
@@ -324,29 +329,19 @@ def main():
 
                     print("INFO: Binary padded with %d byte!" % num_of_bytes_to_pad )
 
-            # Calculate application CRC
-            # NOTE: Start calculation after application header!
-            app_crc = calc_crc32( out_file.read( APP_HEADER_SIZE_BYTE, None ))
-
             # Write app lenght into application header
             out_file.write( APP_HEADER_SIZE_ADDR, struct.pack('I', int(app_size)))
 
-            # Write app CRC into application header
-            out_file.write( APP_HEADER_IMAGE_CRC_ADDR, struct.pack('I', int(app_crc)))
 
-            # Success info
-            print("SUCCESS: Image (application) header successfully filled!")
+            ######################################################################################
+            ## IMAGE SIGNING
+            ######################################################################################
 
             # Signing application
             if sign_en:
                 
                 # Create signature
                 signature = gen_binary_signature( out_file.read( APP_HEADER_SIZE_BYTE, ( out_file.size() - APP_HEADER_SIZE_BYTE )), private_key )
-
-                #for s in signature:
-                #    print("%02X" % ( s ))
-                    #print("%02X %02X %02X %02X %02X %02X %02X %02X" % ( s ))
-                print( "Signature: %s" % signature )
 
                 # Add signature to application header
                 out_file.write( APP_HEADER_SIGNATURE_ADDR, signature )
@@ -357,9 +352,40 @@ def main():
                 # Succes info
                 print("SUCCESS: Firmware image successfully signed!")  
 
+
+            ######################################################################################
+            ## IMAGE ENCRYPTION
+            ######################################################################################
+
             # Add encryption type if encryption enabled
             if crypto_en:
+
+                # Set encryption type
                 out_file.write( APP_HEADER_ENC_TYPE_ADDR, [ENC_TYPE_AES_CTR] )  
+
+                # Encrypt application part, skip application header
+                #file_crypted_out.write( APP_HEADER_SIZE_BYTE, aes_encode( out_file.read( APP_HEADER_SIZE_BYTE, out_file.size() - APP_HEADER_SIZE_BYTE )))
+                out_file.write( APP_HEADER_SIZE_BYTE, aes_encode( out_file.read( APP_HEADER_SIZE_BYTE, None )))
+
+                # Succes info
+                print("SUCCESS: Firmware image successfully crypted!")    
+
+
+            ######################################################################################
+            ## CALCULATE APPLICATION PART OF IMAGE CRC
+            ######################################################################################
+
+            # Calculate application CRC
+            # NOTE: Start calculation after application header and after crypting of the image!
+            app_crc = calc_crc32( out_file.read( APP_HEADER_SIZE_BYTE, None ))
+
+            # Write app CRC into application header
+            out_file.write( APP_HEADER_IMAGE_CRC_ADDR, struct.pack('I', int(app_crc)))
+
+
+            ######################################################################################
+            ## LAST STEP IS TO CALCULATE IMAGE (APP) HEADER CRC 
+            ######################################################################################
 
             # Calculate application header CRC after all fields are header fields are setup!
             # NOTE: Ignore first field as it is CRC value itself!
@@ -368,36 +394,13 @@ def main():
             # Write application header crc
             out_file.write( APP_HEADER_CRC_ADDR, [app_header_crc] )
 
-            # Encrypt binary image
-            if crypto_en:
-
-                # Get output file
-                out_file_name, out_file_extension = file_path_out.split("/")[-1].split(".")
-
-                # Get output file path
-                out_file_path = "/".join( file_path_out.split("/")[:len(file_path_out.split("/"))-1]) + "/"
-
-                # Create crypted binary file
-                file_path_crypted_out = out_file_path + out_file_name + "_CRYPTED." + out_file_extension
-
-                # Open outputed binary file
-                file_crypted_out = BinFile( file_path_crypted_out, access=BinFile.WRITE_ONLY)                
-
-                # Copy application header to crypted output file
-                # NOTE: Application header is not crypted!
-                file_crypted_out.write( 0, out_file.read( 0, APP_HEADER_SIZE_BYTE ))
-
-                # Encrypt application part, skip application header
-                file_crypted_out.write( APP_HEADER_SIZE_BYTE, aes_encode( out_file.read( APP_HEADER_SIZE_BYTE, out_file.size() - APP_HEADER_SIZE_BYTE )))
-
-                # Succes info
-                print("SUCCESS: Firmware image successfully crypted!")    
-
-            print("")           
+            # Success info
+            print("SUCCESS: Image (application) header successfully filled!")            
 
         else:
             print( "ERROR: Application header version not supported!" ) 
             raise RuntimeError 
+
 
 #################################################################################################
 ##  MAIN ENTRY
