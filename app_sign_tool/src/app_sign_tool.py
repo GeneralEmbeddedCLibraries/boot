@@ -324,10 +324,11 @@ def main():
                     # Pad file
                     out_file.write( app_size, [ PAD_VALUE for _ in range( num_of_bytes_to_pad ) ])
 
-                    # Count application size
-                    app_size = out_file.size()
-
                     print("INFO: Binary padded with %d byte!" % num_of_bytes_to_pad )
+
+            # Get application size
+            ## NOTE: Application size exclude size of header!
+            app_size = ( out_file.size() - APP_HEADER_SIZE_BYTE )
 
             # Write app lenght into application header
             out_file.write( APP_HEADER_SIZE_ADDR, struct.pack('I', int(app_size)))
@@ -341,7 +342,7 @@ def main():
             if sign_en:
                 
                 # Create signature
-                signature = gen_binary_signature( out_file.read( APP_HEADER_SIZE_BYTE, ( out_file.size() - APP_HEADER_SIZE_BYTE )), private_key )
+                signature = gen_binary_signature( out_file.read( APP_HEADER_SIZE_BYTE, None ), private_key )
 
                 # Add signature to application header
                 out_file.write( APP_HEADER_SIGNATURE_ADDR, signature )
