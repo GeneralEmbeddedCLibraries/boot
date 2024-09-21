@@ -325,9 +325,97 @@ static uint32_t boot_fw_image_calc_crc(const uint32_t size)
 * 			    -O0:    137 ms
 * 			    -Ofast: 110 ms
 *
+*
+*           TODO: Measure again!
+*
 * @return       status - Status of validation
 */
 ////////////////////////////////////////////////////////////////////////////////
+
+
+#include "micro_ecc/uECC.h"
+#include "cifra/sha2.h"
+
+// Command to produce following output >>>openssl ec -in private.pem -text -noout
+//
+// Private-Key: (256 bit)
+// priv:
+//     39:4b:7a:55:f3:d9:eb:ad:af:0e:93:89:74:dd:cc:
+//     ea:26:20:61:da:ca:ea:62:a4:42:d5:b8:a8:4e:4c:
+//     ef:d8
+// pub:
+//     04:1c:d6:14:38:06:fc:17:7d:39:9e:0b:a7:cf:79:
+//     fc:67:77:a2:60:38:08:02:d8:bb:cd:15:29:24:c6:
+//     3c:b7:78:59:95:30:f9:33:05:21:10:e9:73:5f:1a:
+//     ed:18:12:2f:14:76:ae:e5:32:61:8f:fd:a8:38:27:
+//     6d:76:1f:37:b7
+// ASN1 OID: secp256k1
+//
+// NOTE: We then add our public key to our firmware. micro-ecc expects our keys to be “represented in standard format, but without the 0x04 prefix
+
+#if 1
+
+// Sizeof: 64
+static const uint8_t MY_PUBKEY[] =
+{
+    0x1c, 0xd6, 0x14, 0x38, 0x06, 0xfc, 0x17, 0x7d, 0x39, 0x9e, 0x0b, 0xa7, 0xcf,
+    0x79, 0xfc, 0x67, 0x77, 0xa2, 0x60, 0x38, 0x08, 0x02, 0xd8, 0xbb, 0xcd, 0x15,
+    0x29, 0x24, 0xc6, 0x3c, 0xb7, 0x78, 0x59, 0x95, 0x30, 0xf9, 0x33, 0x05, 0x21,
+    0x10, 0xe9, 0x73, 0x5f, 0x1a, 0xed, 0x18, 0x12, 0x2f, 0x14, 0x76, 0xae, 0xe5,
+    0x32, 0x61, 0x8f, 0xfd, 0xa8, 0x38, 0x27, 0x6d, 0x76, 0x1f, 0x37, 0xb7
+};
+#endif
+
+
+
+
+static void prv_sha256(const void *buf, uint32_t size, uint8_t *hash_out)
+{
+  cf_sha256_context ctx;
+  cf_sha256_init(&ctx);
+  cf_sha256_update(&ctx, buf, size);
+  cf_sha256_digest_final(&ctx, hash_out);
+}
+
+
+bool image_check_signature(const ver_image_header_t * p_hdr)
+{
+    bool valid = false;
+
+    //void *addr = (slot == IMAGE_SLOT_1 ? &__slot1rom_start__ : &__slot2rom_start__);
+    //addr += sizeof(image_hdr_t);
+
+    void * addr = (uint32_t*)( BOOT_CFG_APP_HEAD_ADDR + sizeof( ver_image_header_t ));
+
+
+    //uint32_t len = hdr->data_size;
+    uint32_t len = ( p_hdr->data.image_size - sizeof( ver_image_header_t ));
+
+    uint8_t hash[CF_SHA256_HASHSZ];
+    prv_sha256(addr, len, hash);
+
+    const struct uECC_Curve_t *curve = uECC_secp256k1();
+
+    if (!uECC_valid_public_key( MY_PUBKEY, curve ))
+    {
+        BOOT_DBG_PRINT( "Public key invalid!" );
+    }
+
+    if (!uECC_verify( MY_PUBKEY, hash, CF_SHA256_HASHSZ, p_hdr->data.signature, curve ))
+    {
+        BOOT_DBG_PRINT( "Signature invalid!" );
+    }
+    else
+    {
+        BOOT_DBG_PRINT( "Signature valid!" );
+
+        valid = true;
+    }
+
+    return valid;
+}
+
+
 static boot_status_t boot_fw_image_validate(void)
 {
             boot_status_t       status      = eBOOT_OK;
@@ -341,6 +429,16 @@ static boot_status_t boot_fw_image_validate(void)
     {
         // Calculate firmware image crc
         const uint32_t fw_crc_calc = boot_fw_image_calc_crc( app_header.data.image_size );
+
+
+        // TODO: Add signature validation
+        image_check_signature((ver_image_header_t*) &app_header );
+
+
+
+
+
+
 
         // FW image CRC valid
         if ( app_header.data.image_crc == fw_crc_calc )
