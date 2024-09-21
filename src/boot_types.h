@@ -73,6 +73,7 @@ typedef enum
     eBOOT_MSG_ERROR_FW_SIZE         = (uint8_t) ( 0x10U ),    /**<Firmware image size to big error */
     eBOOT_MSG_ERROR_FW_VER          = (uint8_t) ( 0x20U ),    /**<Uncompatible firmware version error */
     eBOOT_MSG_ERROR_HW_VER          = (uint8_t) ( 0x40U ),    /**<Uncompatible hardware version error */
+    eBOOT_MSG_ERROR_SIGNATURE       = (uint8_t) ( 0x80U ),    /**<Invalid digital signature */
 } boot_msg_status_t;
 
 /**
