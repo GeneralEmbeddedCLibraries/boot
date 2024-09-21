@@ -285,9 +285,11 @@ static uint32_t boot_fw_image_calc_crc(const uint32_t size)
             uint8_t     data    = 0U;
 
     // Calculate size of app image without application header
-    const uint32_t app_size = ( size - sizeof(ver_image_header_t));
 
-    for (uint32_t i = 0; i < app_size; i++)
+    // TODO: Check that
+    //const uint32_t app_size = ( size - sizeof(ver_image_header_t));
+
+    for (uint32_t i = 0; i < size; i++)
     {
     	// Ignore application header from CRC calc
         const uint32_t addr = BOOT_CFG_APP_HEAD_ADDR + sizeof(ver_image_header_t) + i;
@@ -378,6 +380,10 @@ static void prv_sha256(const void *buf, uint32_t size, uint8_t *hash_out)
 }
 
 
+
+#define BOOT_APP_ADDR_START     ((uint32_t*)( BOOT_CFG_APP_HEAD_ADDR + sizeof( ver_image_header_t )))
+
+
 bool image_check_signature(const ver_image_header_t * p_hdr)
 {
     bool valid = false;
@@ -385,11 +391,15 @@ bool image_check_signature(const ver_image_header_t * p_hdr)
     //void *addr = (slot == IMAGE_SLOT_1 ? &__slot1rom_start__ : &__slot2rom_start__);
     //addr += sizeof(image_hdr_t);
 
-    void * addr = (uint32_t*)( BOOT_CFG_APP_HEAD_ADDR + sizeof( ver_image_header_t ));
+    //void * addr = (uint32_t*)( BOOT_CFG_APP_HEAD_ADDR + sizeof( ver_image_header_t ));
+    void * addr = BOOT_APP_ADDR_START;
 
 
     //uint32_t len = hdr->data_size;
-    uint32_t len = ( p_hdr->data.image_size - sizeof( ver_image_header_t ));
+
+    // TODO: Image size logic change
+    //uint32_t len = ( p_hdr->data.image_size - sizeof( ver_image_header_t ));
+    uint32_t len = p_hdr->data.image_size;
 
     uint8_t hash[CF_SHA256_HASHSZ];
     prv_sha256(addr, len, hash);
@@ -991,7 +1001,11 @@ void boot_com_prepare_msg_rcv_cb(const uint32_t fw_size, const uint32_t fw_ver, 
         fsm_goto_state( g_boot_fsm, eBOOT_STATE_FLASH );
 
         // Prepare flashing data
-        g_boot_flashing.fw_size         = fw_size;
+
+        // TODO: Image size logic has change
+        //g_boot_flashing.fw_size         = fw_size;
+        g_boot_flashing.fw_size         = ( fw_size + sizeof( ver_image_header_t ));
+
         g_boot_flashing.working_addr    = BOOT_CFG_APP_HEAD_ADDR;
     }
 
