@@ -89,6 +89,20 @@
 
 #endif
 
+/**
+ *      Public key
+ *
+ *  @note   Generated with OpenSSL tool!
+ */
+static const uint8_t gu8_public_key[64] =
+{
+    0x1c, 0xd6, 0x14, 0x38, 0x06, 0xfc, 0x17, 0x7d, 0x39, 0x9e, 0x0b, 0xa7, 0xcf,
+    0x79, 0xfc, 0x67, 0x77, 0xa2, 0x60, 0x38, 0x08, 0x02, 0xd8, 0xbb, 0xcd, 0x15,
+    0x29, 0x24, 0xc6, 0x3c, 0xb7, 0x78, 0x59, 0x95, 0x30, 0xf9, 0x33, 0x05, 0x21,
+    0x10, 0xe9, 0x73, 0x5f, 0x1a, 0xed, 0x18, 0x12, 0x2f, 0x14, 0x76, 0xae, 0xe5,
+    0x32, 0x61, 0x8f, 0xfd, 0xa8, 0x38, 0x27, 0x6d, 0x76, 0x1f, 0x37, 0xb7
+};
+
 // USER CODE END...
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -438,6 +452,24 @@ boot_status_t boot_if_flash_erase(const uint32_t addr, const uint32_t size)
     // USER CODE END...
 
     return status;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Get public key
+*
+*   @note In case of signature is not used return NULL!
+*
+* @return       public key
+*/
+////////////////////////////////////////////////////////////////////////////////
+const uint8_t * boot_if_get_public_key(void)
+{
+    // USER CODE BEGIN...
+
+    return (const uint8_t*) &gu8_public_key;
+
+    // USER CODE END...
 }
 
 #if ( 1 == BOOT_CFG_CRYPTION_EN )

@@ -133,7 +133,7 @@
  * @note    Boot count is safety mechanism build into bootloader
  *          in order to detect malfunctional application!
  */
-#define BOOT_CFG_APP_BOOT_CNT_CHECK_EN          ( 1 )
+#define BOOT_CFG_APP_BOOT_CNT_CHECK_EN          ( 0 )
 
 /**
  *      Boot counts limit
@@ -245,8 +245,10 @@
  *  Disable debug mode and asserts in release mode
  */
 #ifndef DEBUG
-    #undef BOOT_CFG_DEBUG_EN
-    #define BOOT_CFG_DEBUG_EN 0
+
+    // TODO: Check this for release
+    //#undef BOOT_CFG_DEBUG_EN
+    //#define BOOT_CFG_DEBUG_EN 0
 
     #undef BOOT_CFG_ASSERT_EN
     #define BOOT_CFG_ASSERT_EN 0

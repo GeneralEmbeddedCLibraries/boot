@@ -352,7 +352,7 @@ static boot_status_t boot_fw_image_check_crc(const ver_image_header_t * const p_
 //
 // NOTE: We then add our public key to our firmware. micro-ecc expects our keys to be “represented in standard format, but without the 0x04 prefix
 
-#if 1
+#if 0
 
 // Sizeof: 64
 static const uint8_t MY_PUBKEY[] =
@@ -369,8 +369,6 @@ static const uint8_t MY_PUBKEY[] =
 
 
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /**
 *       Check firmware image digital signature using ECSDA
@@ -381,8 +379,11 @@ static const uint8_t MY_PUBKEY[] =
 ////////////////////////////////////////////////////////////////////////////////
 static boot_status_t boot_fw_image_check_sig(const ver_image_header_t * const p_head)
 {
-    boot_status_t   status                  = eBOOT_OK;
-    uint8_t         hash[CF_SHA256_HASHSZ]  = {0};
+            boot_status_t   status                  = eBOOT_OK;
+    static  uint8_t         hash[CF_SHA256_HASHSZ]  = {0};
+
+    // Clean hash
+    memset( hash, 0U, sizeof(hash));
 
     // Get application image start address
     void * addr = BOOT_APP_ADDR_START;
@@ -394,7 +395,7 @@ static boot_status_t boot_fw_image_check_sig(const ver_image_header_t * const p_
     const struct uECC_Curve_t * p_curve = uECC_secp256k1();
 
     // Public key invalid
-    if ( 0 == uECC_valid_public_key( MY_PUBKEY, p_curve ))
+    if ( 0 == uECC_valid_public_key( boot_if_get_public_key(), p_curve ))
     {
         status = eBOOT_ERROR;
         BOOT_DBG_PRINT( "Public key invalid!" );
@@ -404,7 +405,7 @@ static boot_status_t boot_fw_image_check_sig(const ver_image_header_t * const p_
     else
     {
         // Signature invalid
-        if ( 0 == uECC_verify( MY_PUBKEY, hash, CF_SHA256_HASHSZ, p_head->data.signature, p_curve ))
+        if ( 0 == uECC_verify( boot_if_get_public_key(), hash, CF_SHA256_HASHSZ, p_head->data.signature, p_curve ))
         {
             status = eBOOT_ERROR;
             BOOT_DBG_PRINT( "Signature invalid!" );
