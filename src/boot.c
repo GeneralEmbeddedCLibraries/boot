@@ -93,7 +93,8 @@ static boot_status_t        boot_app_head_read          (const ver_image_header_
 static boot_status_t        boot_app_head_erase         (void);
 static uint8_t              boot_app_head_calc_crc      (const ver_image_header_t * const p_head);
 
-static uint32_t             boot_fw_image_calc_crc      (const uint32_t size);
+static boot_status_t        boot_fw_image_check_crc     (const ver_image_header_t * const p_head);
+static boot_status_t        boot_fw_image_check_sig     (const ver_image_header_t * const p_head);
 static boot_status_t        boot_fw_image_validate      (void);
 static boot_status_t        boot_start_application      (void);
 static boot_status_t        boot_shared_mem_calc_crc    (const boot_shared_mem_t * const p_mem);
@@ -277,24 +278,22 @@ static uint8_t boot_app_head_calc_crc(const ver_image_header_t * const p_head)
 * @return       crc32   - CRC32 of application image
 */
 ////////////////////////////////////////////////////////////////////////////////
-static uint32_t boot_fw_image_calc_crc(const uint32_t size)
+static boot_status_t boot_fw_image_check_crc(const ver_image_header_t * const p_head)
 {
-    const   uint32_t    poly    = 0x04C11DB7;
-    const   uint32_t    seed    = 0x10101010;
-            uint32_t    crc32   = seed;
-            uint8_t     data    = 0U;
+            boot_status_t   status  = eBOOT_OK;
+    const   uint32_t    	poly    = 0x04C11DB7;
+    const   uint32_t    	seed    = 0x10101010;
+            uint32_t    	crc32   = seed;
+            uint8_t     	data    = 0U;
 
-    // Calculate size of app image without application header
-
-    // TODO: Check that
-    //const uint32_t app_size = ( size - sizeof(ver_image_header_t));
-
-    for (uint32_t i = 0; i < size; i++)
+    // Calculate CRC
+    for (uint32_t i = 0; i < p_head->data.image_size; i++)
     {
     	// Ignore application header from CRC calc
         const uint32_t addr = BOOT_CFG_APP_HEAD_ADDR + sizeof(ver_image_header_t) + i;
 
         // Read byte from application
+        // TODO: Check timings if this read will go thru NVM or directly via memory!?
         (void) boot_if_flash_read( addr, 1U, (uint8_t*)&data );
 
         // Calc CRC-32
@@ -313,8 +312,16 @@ static uint32_t boot_fw_image_calc_crc(const uint32_t size)
         }
     }
 
-    return ( crc32 & 0xFFFFFFFFU );
+    // Check CRC
+    if (( crc32 & 0xFFFFFFFFU ) != p_head->data.image_crc )
+    {
+        status = eBOOT_ERROR;
+        BOOT_DBG_PRINT( "Firmware image CRC invalid!" );
+    }
+
+    return status;
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -371,12 +378,13 @@ static const uint8_t MY_PUBKEY[] =
 
 
 
-static void prv_sha256(const void *buf, uint32_t size, uint8_t *hash_out)
+
+static void boot_calc_hash(const void *p_data, const uint32_t size, uint8_t * const p_hash_out)
 {
   cf_sha256_context ctx;
   cf_sha256_init(&ctx);
-  cf_sha256_update(&ctx, buf, size);
-  cf_sha256_digest_final(&ctx, hash_out);
+  cf_sha256_update(&ctx, p_data, size);
+  cf_sha256_digest_final(&ctx, p_hash_out);
 }
 
 
@@ -384,45 +392,39 @@ static void prv_sha256(const void *buf, uint32_t size, uint8_t *hash_out)
 #define BOOT_APP_ADDR_START     ((uint32_t*)( BOOT_CFG_APP_HEAD_ADDR + sizeof( ver_image_header_t )))
 
 
-bool image_check_signature(const ver_image_header_t * p_hdr)
+static boot_status_t boot_fw_image_check_sig(const ver_image_header_t * const p_head)
 {
-    bool valid = false;
+    boot_status_t   status                  = eBOOT_OK;
+    uint8_t         hash[CF_SHA256_HASHSZ]  = {0};
 
-    //void *addr = (slot == IMAGE_SLOT_1 ? &__slot1rom_start__ : &__slot2rom_start__);
-    //addr += sizeof(image_hdr_t);
-
-    //void * addr = (uint32_t*)( BOOT_CFG_APP_HEAD_ADDR + sizeof( ver_image_header_t ));
+    // Get application image start address
     void * addr = BOOT_APP_ADDR_START;
 
+    // Calculate image hash
+    boot_calc_hash( addr, p_head->data.image_size, hash );
 
-    //uint32_t len = hdr->data_size;
+    // Create curve context
+    const struct uECC_Curve_t * p_curve = uECC_secp256k1();
 
-    // TODO: Image size logic change
-    //uint32_t len = ( p_hdr->data.image_size - sizeof( ver_image_header_t ));
-    uint32_t len = p_hdr->data.image_size;
-
-    uint8_t hash[CF_SHA256_HASHSZ];
-    prv_sha256(addr, len, hash);
-
-    const struct uECC_Curve_t *curve = uECC_secp256k1();
-
-    if (!uECC_valid_public_key( MY_PUBKEY, curve ))
+    // Public key invalid
+    if ( 0 == uECC_valid_public_key( MY_PUBKEY, p_curve ))
     {
+        status = eBOOT_ERROR;
         BOOT_DBG_PRINT( "Public key invalid!" );
     }
 
-    if (!uECC_verify( MY_PUBKEY, hash, CF_SHA256_HASHSZ, p_hdr->data.signature, curve ))
-    {
-        BOOT_DBG_PRINT( "Signature invalid!" );
-    }
+    // Public key valid
     else
     {
-        BOOT_DBG_PRINT( "Signature valid!" );
-
-        valid = true;
+        // Signature invalid
+        if ( 0 == uECC_verify( MY_PUBKEY, hash, CF_SHA256_HASHSZ, p_head->data.signature, p_curve ))
+        {
+            status = eBOOT_ERROR;
+            BOOT_DBG_PRINT( "Signature invalid!" );
+        }
     }
 
-    return valid;
+    return status;
 }
 
 
@@ -437,29 +439,38 @@ static boot_status_t boot_fw_image_validate(void)
     // Application header OK
     if ( eBOOT_OK == status )
     {
-        // Calculate firmware image crc
-        const uint32_t fw_crc_calc = boot_fw_image_calc_crc( app_header.data.image_size );
-
-
-        // TODO: Add signature validation
-        image_check_signature((ver_image_header_t*) &app_header );
-
-
-
-
-
-
-
-        // FW image CRC valid
-        if ( app_header.data.image_crc == fw_crc_calc )
+        // Check for ECSDA signature
+        if ( eVER_SIG_TYPE_ECSDA == app_header.data.sig_type )
         {
-            BOOT_DBG_PRINT( "Firmware image OK!" );
+            BOOT_DBG_PRINT( "Image validation method: ECDSA" );
+            status = boot_fw_image_check_sig((ver_image_header_t*) &app_header );
         }
 
-        // FW image corrupted
+        // Check for image CRC only when signature is disabled
+        else if ( eVER_SIG_TYPE_NONE == app_header.data.sig_type )
+        {
+            BOOT_DBG_PRINT( "Image validation method: CRC" );
+            status = boot_fw_image_check_crc( (ver_image_header_t*) &app_header );
+        }
+
+        // Other validation methods
         else
         {
-            status = eBOOT_ERROR_CRC;
+            // Add support for new validation method
+            BOOT_DBG_PRINT( "ERROR: Image validation method: UNDEFINED" );
+            BOOT_ASSERT(0);
+        }
+
+        // Image validation OK
+        if ( eBOOT_OK == status )
+        {
+            BOOT_DBG_PRINT( "Firmware image validated OK!" );
+        }
+
+        // FW image corrupted - validation error
+        else
+        {
+            status = eBOOT_ERROR;
 
             /**
              *  Erase application header -> This will enable re-flashing
@@ -468,7 +479,7 @@ static boot_status_t boot_fw_image_validate(void)
              */
             (void) boot_app_head_erase();
 
-            BOOT_DBG_PRINT( "ERROR: Firmware image corrupted!" );
+            BOOT_DBG_PRINT( "ERROR: Firmware image corrupted! Validation failed!" );
         }
     }
 
@@ -814,13 +825,6 @@ static void boot_fsm_prepare_hndl(const p_fsm_t fsm_inst)
 
         BOOT_DBG_PRINT( "ERROR: Prepare state timeouted!" );
     }
-
-
-
-
-
-
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1001,11 +1005,7 @@ void boot_com_prepare_msg_rcv_cb(const uint32_t fw_size, const uint32_t fw_ver, 
         fsm_goto_state( g_boot_fsm, eBOOT_STATE_FLASH );
 
         // Prepare flashing data
-
-        // TODO: Image size logic has change
-        //g_boot_flashing.fw_size         = fw_size;
         g_boot_flashing.fw_size         = ( fw_size + sizeof( ver_image_header_t ));
-
         g_boot_flashing.working_addr    = BOOT_CFG_APP_HEAD_ADDR;
     }
 
@@ -1183,7 +1183,7 @@ void boot_com_exit_msg_rcv_cb(void)
         }
     }
 
-    // Not in PREPARE state
+    // Not in EXIT state
     else
     {
         msg_status = eBOOT_MSG_ERROR_INVALID_REQ;
