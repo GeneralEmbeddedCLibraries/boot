@@ -61,6 +61,7 @@ APP_HEADER_SIG_TYPE_ADDR        = 0x1D  # Signature type [0-None, 1-ECSDA]
 APP_HEADER_SIGNATURE_ADDR       = 0x1E  # Signature of the image. Size: 64 bytes
 APP_HEADER_HASH_ADDR            = 0x5E  # Image hash - SHA256. Size: 32 bytes
 APP_HEADER_GIT_SHA_ADDR         = 0x7E  # Git commit hash. Size: 8 byte
+APP_HEADER_ENC_IMAGE_CRC_ADDR   = 0x86  # Encrypted image CRC32
 
 # Encryption types
 ENC_TYPE_NONE = 0
@@ -335,6 +336,18 @@ def main():
 
 
             ######################################################################################
+            ## CALCULATE OPEN APPLICATION PART OF IMAGE CRC
+            ######################################################################################
+
+            # Calculate application CRC
+            # NOTE: Start calculation after application header and after crypting of the image!
+            app_crc = calc_crc32( out_file.read( APP_HEADER_SIZE_BYTE, None ))
+
+            # Write app CRC into application header
+            out_file.write( APP_HEADER_IMAGE_CRC_ADDR, struct.pack('I', int(app_crc)))            
+
+
+            ######################################################################################
             ## IMAGE SIGNING
             ######################################################################################
 
@@ -371,17 +384,12 @@ def main():
                 # Succes info
                 print("SUCCESS: Firmware image successfully crypted!")    
 
+                # Calculate encrypted application CRC
+                # NOTE: Start calculation after application header and after crypting of the image!
+                app_crc = calc_crc32( out_file.read( APP_HEADER_SIZE_BYTE, None ))
 
-            ######################################################################################
-            ## CALCULATE APPLICATION PART OF IMAGE CRC
-            ######################################################################################
-
-            # Calculate application CRC
-            # NOTE: Start calculation after application header and after crypting of the image!
-            app_crc = calc_crc32( out_file.read( APP_HEADER_SIZE_BYTE, None ))
-
-            # Write app CRC into application header
-            out_file.write( APP_HEADER_IMAGE_CRC_ADDR, struct.pack('I', int(app_crc)))
+                # Write encrypted app CRC into application header
+                out_file.write( APP_HEADER_ENC_IMAGE_CRC_ADDR, struct.pack('I', int(app_crc)))
 
 
             ######################################################################################
