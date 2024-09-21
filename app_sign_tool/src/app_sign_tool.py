@@ -103,11 +103,11 @@ def arg_parser():
                                         epilog="Enjoy the program!")
 
     # Add arguments
-    parser.add_argument("-f", help="Input binary file", metavar="bin_in", type=str, required=True )
-    parser.add_argument("-o", help="Output binary file. Filling only image (application) header", metavar="bin_out", type=str, required=True )
-    parser.add_argument("-s", help="Signing (ECSDA) binary file", action="store_true", required=False )
-    parser.add_argument("-private_key", help="Private key for signature", metavar="private_key", required=False )    
-    parser.add_argument("-c", help="Encrypt (AES-CTR) binary file", action="store_true", required=False )
+    parser.add_argument("-f", help="Input binary file",             metavar="bin_in",   type=str,   required=True )
+    parser.add_argument("-o", help="Output binary file",            metavar="bin_out",  type=str,   required=True )
+    parser.add_argument("-s", help="Signing (ECSDA) binary file",   action="store_true",            required=False )
+    parser.add_argument("-k", help="Private key for signature",     metavar="k",                    required=False )    
+    parser.add_argument("-c", help="Encrypt (AES-CTR) binary file", action="store_true",            required=False )
 
     # Get args
     args = parser.parse_args()
@@ -119,7 +119,7 @@ def arg_parser():
     file_in     = args["f"]
     file_out    = args["o"]
 
-    return file_in, file_out, args["c"], args["s"], args["private_key"]
+    return file_in, file_out, args["c"], args["s"], args["k"]
 
 # ===============================================================================
 # @brief  Calculate CRC-32
@@ -258,10 +258,18 @@ class BinFile:
     def __set_ptr(self, offset):
         self.file.seek(offset)                    
 
+# ===============================================================================
+# @brief  Generate ECDSA signature
+#
+# @note     Outputed signature is 64 bytes long!
+#
+# @param[in]    data        - Inputed data to sign
+# @param[in]    key_file    - Private key file location
+# @return       sig         - Digital signature
+# ===============================================================================
+def generate_signature(data, key_file):
 
-def gen_binary_signature(data, key_filename):
-
-    with open(key_filename, "r") as f:
+    with open(key_file, "r") as f:
         key_pem = f.read()
 
     key = SigningKey.from_pem(key_pem)
@@ -269,6 +277,26 @@ def gen_binary_signature(data, key_filename):
 
     return bytearray( sig )
 
+# ===============================================================================
+# @brief  Generate SHA256 hash
+#
+# @note     Outputed hash is 32 bytes long!
+#
+# @param[in]    data - Inputed data to hash 
+# @return       hash - Hash of inputed data
+# ===============================================================================
+def generate_hash(data):
+
+    # Create an SHA-256 hash object
+    sha256_hash = hashlib.sha256()
+
+    # Update the hash object with the data
+    sha256_hash.update(data)
+
+    # Get the hexadecimal digest of the hash
+    hash = sha256_hash.digest()
+
+    return bytearray( hash )
 
 # ===============================================================================
 # @brief:  Main 
@@ -354,14 +382,20 @@ def main():
             # Signing application
             if sign_en:
                 
-                # Create signature
-                signature = gen_binary_signature( out_file.read( APP_HEADER_SIZE_BYTE, None ), private_key )
+                # Generate signature
+                signature = generate_signature( out_file.read( APP_HEADER_SIZE_BYTE, None ), private_key )
+
+                # Generate hash
+                hash = generate_hash( out_file.read( APP_HEADER_SIZE_BYTE, None ))
 
                 # Add signature to application header
                 out_file.write( APP_HEADER_SIGNATURE_ADDR, signature )
 
                 # Add signature type
                 out_file.write( APP_HEADER_SIG_TYPE_ADDR, [DIG_SIG_TYPE_ECDSA] )
+
+                # Add hash to application header
+                out_file.write( APP_HEADER_HASH_ADDR, hash )                
 
                 # Succes info
                 print("SUCCESS: Firmware image successfully signed!")  
