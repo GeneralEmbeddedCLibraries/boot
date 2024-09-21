@@ -40,6 +40,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 /**
+ *  Start address of application code
+ */
+#define BOOT_APP_ADDR_START     ((uint32_t*)( BOOT_CFG_APP_HEAD_ADDR + sizeof( ver_image_header_t )))
+
+/**
  *  Compatibility check with REVISION
  *
  *  Support version V1.3.x up
@@ -95,6 +100,7 @@ static uint8_t              boot_app_head_calc_crc      (const ver_image_header_
 
 static boot_status_t        boot_fw_image_check_crc     (const ver_image_header_t * const p_head);
 static boot_status_t        boot_fw_image_check_sig     (const ver_image_header_t * const p_head);
+static void                 boot_calc_hash              (const void *p_data, const uint32_t size, uint8_t * const p_hash_out);
 static boot_status_t        boot_fw_image_validate      (void);
 static boot_status_t        boot_start_application      (void);
 static boot_status_t        boot_shared_mem_calc_crc    (const boot_shared_mem_t * const p_mem);
@@ -266,16 +272,16 @@ static uint8_t boot_app_head_calc_crc(const ver_image_header_t * const p_head)
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
-*       Calculate firmware image CRC
+*       Check firmware image CRC32
 *
-* @note	 	Firmware image CRC is being calculated only across application code,
-* 			application header is not included into CRC calculations.
+* @note     Firmware image CRC is being calculated only across application code,
+*           application header is not included into CRC calculations.
 *
-* @note		This function expects application header at the top
-* 			of new firmware image!
+* @note     This function expects application header at the top
+*           of new firmware image!
 *
-* @param[in]    size 	- Size of firmware image in bytes
-* @return       crc32   - CRC32 of application image
+* @param[in]    p_head  - Image (app) header
+* @return       status  - Status of validation
 */
 ////////////////////////////////////////////////////////////////////////////////
 static boot_status_t boot_fw_image_check_crc(const ver_image_header_t * const p_head)
@@ -323,23 +329,7 @@ static boot_status_t boot_fw_image_check_crc(const ver_image_header_t * const p_
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/**
-*       Validate firmware image
-*
-* @note 	That function checks for application header CRC and complete
-* 			firmware image CRC.
-*
-* 			Time execution on Cortex-M4 @150MHz:
-* 			    -O0:    137 ms
-* 			    -Ofast: 110 ms
-*
-*
-*           TODO: Measure again!
-*
-* @return       status - Status of validation
-*/
-////////////////////////////////////////////////////////////////////////////////
+
 
 
 #include "micro_ecc/uECC.h"
@@ -379,19 +369,16 @@ static const uint8_t MY_PUBKEY[] =
 
 
 
-static void boot_calc_hash(const void *p_data, const uint32_t size, uint8_t * const p_hash_out)
-{
-  cf_sha256_context ctx;
-  cf_sha256_init(&ctx);
-  cf_sha256_update(&ctx, p_data, size);
-  cf_sha256_digest_final(&ctx, p_hash_out);
-}
 
 
-
-#define BOOT_APP_ADDR_START     ((uint32_t*)( BOOT_CFG_APP_HEAD_ADDR + sizeof( ver_image_header_t )))
-
-
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Check firmware image digital signature using ECSDA
+*
+* @param[in]    p_head  - Image (app) header
+* @return       status  - Status of validation
+*/
+////////////////////////////////////////////////////////////////////////////////
 static boot_status_t boot_fw_image_check_sig(const ver_image_header_t * const p_head)
 {
     boot_status_t   status                  = eBOOT_OK;
@@ -427,7 +414,43 @@ static boot_status_t boot_fw_image_check_sig(const ver_image_header_t * const p_
     return status;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Calculate image hash
+*
+* @brief    That function generates SHA256 of inputed data!
+*
+* @param[in]    p_data      - Inputed data
+* @param[in]    size        - Size of inputed data
+* @param[out]   p_hash_out  - Hash-SHA256 if inputed data
+* @return       void
+*/
+////////////////////////////////////////////////////////////////////////////////
+static void boot_calc_hash(const void *p_data, const uint32_t size, uint8_t * const p_hash_out)
+{
+  cf_sha256_context ctx;
+  cf_sha256_init(&ctx);
+  cf_sha256_update(&ctx, p_data, size);
+  cf_sha256_digest_final(&ctx, p_hash_out);
+}
 
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Validate firmware image
+*
+* @note     That function checks for application header CRC and complete
+*           firmware image CRC.
+*
+*           Time execution on Cortex-M4 @150MHz:
+*               -O0:    137 ms
+*               -Ofast: 110 ms
+*
+*
+*           TODO: Measure again!
+*
+* @return       status - Status of validation
+*/
+////////////////////////////////////////////////////////////////////////////////
 static boot_status_t boot_fw_image_validate(void)
 {
             boot_status_t       status      = eBOOT_OK;
