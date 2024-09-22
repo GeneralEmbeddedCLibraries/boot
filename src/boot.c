@@ -987,11 +987,6 @@ void boot_com_connect_rsp_msg_rcv_cb(const boot_msg_status_t msg_status)
 *       Prepare Bootloader Message Reception Callback
 *
 * @param[in]    p_head - Image (app) header
-*
-*  TODO: Image info as input, where all related info shall be passed!
-*
-*       Image address as well -> this shall setup "g_boot_flashing.working_addr"
-*
 * @return       void
 */
 ////////////////////////////////////////////////////////////////////////////////
@@ -1021,8 +1016,7 @@ void boot_com_prepare_msg_rcv_cb(const ver_image_header_t * const p_head)
             if ( eBOOT_MSG_OK == msg_status )
             {
                 // Erase application region flash
-                if ( eBOOT_OK != boot_if_flash_erase( BOOT_CFG_APP_HEAD_ADDR, BOOT_CFG_APP_SIZE_MAX ))
-                //if ( eBOOT_OK != boot_if_flash_erase( BOOT_CFG_APP_HEAD_ADDR, ( p_head->data.image_size + sizeof( ver_image_header_t ))))      // TODO: Check here if makes sense to erase only part to fit into application!!!
+                if ( eBOOT_OK != boot_if_flash_erase( p_head->data.image_addr, ( p_head->data.image_size + sizeof( ver_image_header_t ))))
                 {
                     msg_status = eBOOT_MSG_ERROR_FLASH_ERASE;
                 }
@@ -1051,8 +1045,8 @@ void boot_com_prepare_msg_rcv_cb(const ver_image_header_t * const p_head)
             fsm_goto_state( g_boot_fsm, eBOOT_STATE_FLASH );
 
             // Prepare flashing data
-            g_boot_flashing.fw_size         = ( p_head->data.image_size );
-            g_boot_flashing.working_addr    = ( BOOT_CFG_APP_HEAD_ADDR + sizeof( ver_image_header_t ));
+            g_boot_flashing.fw_size      = ( p_head->data.image_size );
+            g_boot_flashing.working_addr = ( p_head->data.image_addr + sizeof( ver_image_header_t ));
         }
 
         // Flashing application header error
@@ -1407,8 +1401,13 @@ boot_status_t boot_hndl(void)
 {
     boot_status_t status = eBOOT_OK;
 
+    // TODO: Based on boot reason handle either communication or memory
+
     // Handle bootloader communication
     status |= boot_com_hndl();
+
+    // Handle memory boot procedure
+    // status |= boot_nvm_hndl();
 
     // Handle FSM
     (void) fsm_hndl( g_boot_fsm );
