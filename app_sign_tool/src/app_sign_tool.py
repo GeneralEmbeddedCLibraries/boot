@@ -49,6 +49,11 @@ APP_HEADER_CRC_ADDR             = 0x00
 APP_HEADER_VER_ADDR             = 0x01
 APP_HEADER_IMG_TYPE_ADDR        = 0x02  # Image type [0-Application, 1-Custom]
 
+# Image type
+class ImageType():
+    APPLICATION = 0
+    CUSTOM      = 1
+
 # Application header data fields
 # For more info about image header look at Revision module specifications: "revision\doc\Revision_Specifications.xlsx"
 APP_HEADER_SW_VER_ADDR          = 0x08  # Software version
@@ -64,12 +69,14 @@ APP_HEADER_GIT_SHA_ADDR         = 0x7E  # Git commit hash. Size: 8 byte
 APP_HEADER_ENC_IMAGE_CRC_ADDR   = 0x86  # Encrypted image CRC32
 
 # Encryption types
-ENC_TYPE_NONE = 0
-ENC_TYPE_AES_CTR = 1
+class EncType():
+    NONE    = 0
+    AES_CTR = 1
 
 # Digital signature types
-DIG_SIG_TYPE_NONE = 0
-DIG_SIG_TYPE_ECDSA = 1
+class SigType():
+    NONE    = 0
+    ECDSA   = 1
 
 # Application header size in bytes
 APP_HEADER_SIZE_BYTE            = 256 # bytes
@@ -333,9 +340,11 @@ def main():
         # Is application header version supported
         if APP_HEADER_VER_EXPECTED == out_file.read( APP_HEADER_VER_ADDR, 1 )[0]:
 
+            # Preparing image header for application
+            out_file.write( APP_HEADER_IMG_TYPE_ADDR, [ImageType.APPLICATION] )
+
             # Count application size
             app_size = out_file.size()
-
 
             ######################################################################################
             ## IMAGE PADDING
@@ -392,13 +401,18 @@ def main():
                 out_file.write( APP_HEADER_SIGNATURE_ADDR, signature )
 
                 # Add signature type
-                out_file.write( APP_HEADER_SIG_TYPE_ADDR, [DIG_SIG_TYPE_ECDSA] )
+                out_file.write( APP_HEADER_SIG_TYPE_ADDR, [SigType.ECDSA] )
 
                 # Add hash to application header
                 out_file.write( APP_HEADER_HASH_ADDR, hash )                
 
                 # Succes info
                 print("SUCCESS: Firmware image successfully signed!")  
+
+            else:
+
+                # Add signature type
+                out_file.write( APP_HEADER_SIG_TYPE_ADDR, [SigType.NONE] )
 
 
             ######################################################################################
@@ -408,8 +422,8 @@ def main():
             # Add encryption type if encryption enabled
             if crypto_en:
 
-                # Set encryption type
-                out_file.write( APP_HEADER_ENC_TYPE_ADDR, [ENC_TYPE_AES_CTR] )  
+                # Set encryption type 
+                out_file.write( APP_HEADER_ENC_TYPE_ADDR, [EncType.AES_CTR] )  
 
                 # Encrypt application part, skip application header
                 #file_crypted_out.write( APP_HEADER_SIZE_BYTE, aes_encode( out_file.read( APP_HEADER_SIZE_BYTE, out_file.size() - APP_HEADER_SIZE_BYTE )))
@@ -425,6 +439,9 @@ def main():
                 # Write encrypted app CRC into application header
                 out_file.write( APP_HEADER_ENC_IMAGE_CRC_ADDR, struct.pack('I', int(app_crc)))
 
+            else:
+                # Set encryption type
+                out_file.write( APP_HEADER_ENC_TYPE_ADDR, [EncType.NONE] ) 
 
             ######################################################################################
             ## LAST STEP IS TO CALCULATE IMAGE (APP) HEADER CRC 
