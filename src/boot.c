@@ -1015,6 +1015,8 @@ void boot_com_prepare_msg_rcv_cb(const ver_image_header_t * const p_head)
             // Everything OK
             if ( eBOOT_MSG_OK == msg_status )
             {
+                // TODO: Assert if that address is out of some sensable address space!!!
+
                 // Erase application region flash
                 if ( eBOOT_OK != boot_if_flash_erase( p_head->data.image_addr, ( p_head->data.image_size + sizeof( ver_image_header_t ))))
                 {
@@ -1040,7 +1042,7 @@ void boot_com_prepare_msg_rcv_cb(const ver_image_header_t * const p_head)
     if ( eBOOT_MSG_OK == msg_status )
     {
         // Flash application header
-        if ( eBOOT_OK == boot_if_flash_write( BOOT_CFG_APP_HEAD_ADDR, sizeof( ver_image_header_t ), (const uint8_t*) p_head ))
+        if ( eBOOT_OK == boot_if_flash_write( p_head->data.image_addr, sizeof( ver_image_header_t ), (const uint8_t*) p_head ))
         {
             fsm_goto_state( g_boot_fsm, eBOOT_STATE_FLASH );
 
