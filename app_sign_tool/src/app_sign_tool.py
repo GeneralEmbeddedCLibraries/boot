@@ -58,7 +58,7 @@ class ImageType():
 # For more info about image header look at Revision module specifications: "revision\doc\Revision_Specifications.xlsx"
 APP_HEADER_SW_VER_ADDR          = 0x08  # Software version
 APP_HEADER_HW_VER_ADDR          = 0x0C  # Hardware version
-APP_HEADER_SIZE_ADDR            = 0x10  # Image size in bytes
+APP_HEADER_IMAGE_SIZE_ADDR      = 0x10  # Image size in bytes
 APP_HEADER_IMAGE_ADDR_ADDR      = 0x14  # Image start address
 APP_HEADER_IMAGE_CRC_ADDR       = 0x18  # Image CRC32
 APP_HEADER_ENC_TYPE_ADDR        = 0x1C  # Encryption type [0-None, 1-AES-CTR]
@@ -381,7 +381,7 @@ def main():
             app_size = ( out_file.size() - APP_HEADER_SIZE_BYTE )
 
             # Write app lenght into application header
-            out_file.write( APP_HEADER_SIZE_ADDR, struct.pack('I', int(app_size)))
+            out_file.write( APP_HEADER_IMAGE_SIZE_ADDR, struct.pack('I', int(app_size)))
 
 
             ######################################################################################
