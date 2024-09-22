@@ -1021,7 +1021,8 @@ void boot_com_prepare_msg_rcv_cb(const ver_image_header_t * const p_head)
             if ( eBOOT_MSG_OK == msg_status )
             {
                 // Erase application region flash
-                if ( eBOOT_OK != boot_if_flash_erase( BOOT_CFG_APP_HEAD_ADDR, BOOT_CFG_APP_SIZE_MAX ))      // TODO: Check here if makes sense to erase only part to fit into application!!!
+                if ( eBOOT_OK != boot_if_flash_erase( BOOT_CFG_APP_HEAD_ADDR, BOOT_CFG_APP_SIZE_MAX ))
+                //if ( eBOOT_OK != boot_if_flash_erase( BOOT_CFG_APP_HEAD_ADDR, ( p_head->data.image_size + sizeof( ver_image_header_t ))))      // TODO: Check here if makes sense to erase only part to fit into application!!!
                 {
                     msg_status = eBOOT_MSG_ERROR_FLASH_ERASE;
                 }
