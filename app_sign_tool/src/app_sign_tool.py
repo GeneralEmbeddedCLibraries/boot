@@ -59,7 +59,7 @@ class ImageType():
 APP_HEADER_SW_VER_ADDR          = 0x08  # Software version
 APP_HEADER_HW_VER_ADDR          = 0x0C  # Hardware version
 APP_HEADER_SIZE_ADDR            = 0x10  # Image size in bytes
-APP_HEADER_IMAGE_ADDR_ADDR      = 0x14  # Image address in case of "custom", for application left empty
+APP_HEADER_IMAGE_ADDR_ADDR      = 0x14  # Image start address
 APP_HEADER_IMAGE_CRC_ADDR       = 0x18  # Image CRC32
 APP_HEADER_ENC_TYPE_ADDR        = 0x1C  # Encryption type [0-None, 1-AES-CTR]
 APP_HEADER_SIG_TYPE_ADDR        = 0x1D  # Signature type [0-None, 1-ECSDA]
@@ -110,11 +110,12 @@ def arg_parser():
                                         epilog="Enjoy the program!")
 
     # Add arguments
-    parser.add_argument("-f", help="Input binary file",             metavar="bin_in",   type=str,   required=True )
-    parser.add_argument("-o", help="Output binary file",            metavar="bin_out",  type=str,   required=True )
-    parser.add_argument("-s", help="Signing (ECSDA) binary file",   action="store_true",            required=False )
-    parser.add_argument("-k", help="Private key for signature",     metavar="k",                    required=False )    
-    parser.add_argument("-c", help="Encrypt (AES-CTR) binary file", action="store_true",            required=False )
+    parser.add_argument("-f", help="Input binary file",             metavar="bin_in",           type=str,   required=True )
+    parser.add_argument("-o", help="Output binary file",            metavar="bin_out",          type=str,   required=True )
+    parser.add_argument("-a", help="Start application address",     metavar="app_addr_start",   type=str,   required=True )
+    parser.add_argument("-s", help="Signing (ECSDA) binary file",   action="store_true",                    required=False )
+    parser.add_argument("-k", help="Private key for signature",     metavar="k",                            required=False )    
+    parser.add_argument("-c", help="Encrypt (AES-CTR) binary file", action="store_true",                    required=False )
 
     # Get args
     args = parser.parse_args()
@@ -123,10 +124,13 @@ def arg_parser():
     args = vars(args)
 
     # Get arguments
-    file_in     = args["f"]
-    file_out    = args["o"]
+    file_in         = args["f"]
+    file_out        = args["o"]
 
-    return file_in, file_out, args["c"], args["s"], args["k"]
+    # Convert to number
+    app_addr_start  = int(args["a"], 16)
+
+    return file_in, file_out, app_addr_start, args["c"], args["s"], args["k"]
 
 # ===============================================================================
 # @brief  Calculate CRC-32
@@ -318,7 +322,7 @@ def main():
     print("====================================================================")
 
     # Get arguments
-    file_path_in, file_path_out, crypto_en, sign_en, private_key = arg_parser()
+    file_path_in, file_path_out, app_addr_start, crypto_en, sign_en, private_key = arg_parser()
 
     # Check for correct file extension 
     if "bin" != file_path_in.split(".")[-1] or "bin" != file_path_out.split(".")[-1]:
@@ -340,15 +344,23 @@ def main():
         # Is application header version supported
         if APP_HEADER_VER_EXPECTED == out_file.read( APP_HEADER_VER_ADDR, 1 )[0]:
 
+            ######################################################################################
+            ## GENERAL HEADER INFO
+            ######################################################################################
+
             # Preparing image header for application
             out_file.write( APP_HEADER_IMG_TYPE_ADDR, [ImageType.APPLICATION] )
 
-            # Count application size
-            app_size = out_file.size()
+            # Write app start address into application header
+            out_file.write( APP_HEADER_IMAGE_ADDR_ADDR, struct.pack('I', int(app_addr_start)))
+
 
             ######################################################################################
             ## IMAGE PADDING
             ######################################################################################
+
+            # Count application size
+            app_size = out_file.size()
 
             # Is pad enable
             if PAD_ENABLE:
