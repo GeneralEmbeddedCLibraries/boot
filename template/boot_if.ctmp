@@ -40,6 +40,7 @@
 // Drivers
 #include "drivers/peripheral/gpio/gpio/src/gpio.h"
 #include "drivers/peripheral/flash/flash/src/flash.h"
+#include "drivers/peripheral/iwdt/iwdt/src/iwdt.h"
 
 // Interface
 #include "drivers/peripheral/usbd/usbd/src/usbd.h"
@@ -470,6 +471,29 @@ const uint8_t * boot_if_get_public_key(void)
     return (const uint8_t*) &gu8_public_key;
 
     // USER CODE END...
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Kick watchdog
+*
+* @note     WDT kick is performed during flash prepare phase as it
+*           takes long time to erase larger memory space.
+*
+* @return       status - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
+boot_status_t boot_if_kick_wdt(void)
+{
+    boot_status_t status = eBOOT_OK;
+
+    // USER CODE BEGIN...
+
+    (void) iwdt_kick();
+
+    // USER CODE END...
+
+    return status;
 }
 
 #if ( 1 == BOOT_CFG_CRYPTION_EN )

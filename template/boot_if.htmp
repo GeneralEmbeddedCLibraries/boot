@@ -52,6 +52,8 @@ boot_status_t   boot_if_flash_erase   	(const uint32_t addr, const uint32_t size
 
 const uint8_t * boot_if_get_public_key  (void);
 
+boot_status_t   boot_if_kick_wdt        (void);
+
 #if ( 1 == BOOT_CFG_CRYPTION_EN )
     void boot_if_decrypt_data   (const uint8_t * const p_crypt_data, uint8_t * const p_decrypt_data, const uint32_t size);
     void boot_if_decrypt_reset  (void);

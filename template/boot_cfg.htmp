@@ -63,7 +63,7 @@
  *          application start aka. vector table. Therefore application start
  *          address might not be at the end of application header!
  */
-#define BOOT_CFG_APP_START_ADDR                     ( 0x08010200 )
+#define BOOT_CFG_APP_START_ADDR                 ( 0x08010200 )
 
 /**
  *      Maximum allowed application size
@@ -72,7 +72,7 @@
  *
  *  Unit: byte
  */
-#define BOOT_CFG_APP_SIZE_MAX                       ( 446U * 1024U )   // NOTE: 478kB = 512kB (Full flash) - 64kB (bootloader) - 2kB (DCT)
+#define BOOT_CFG_APP_SIZE_MAX                   ( 446U * 1024U )   // NOTE: 478kB = 512kB (Full flash) - 64kB (bootloader) - 2kB (DCT)
 
 /**
  *      Enable/Disable new firmware size check
@@ -227,7 +227,7 @@
 /**
  *  Enable/Disable firmware binary encryption
  */
-#define BOOT_CFG_CRYPTION_EN                    ( 0 )
+#define BOOT_CFG_CRYPTION_EN                    ( 1 )
 
 /**
  *      Enable/Disable debug mode
@@ -245,10 +245,8 @@
  *  Disable debug mode and asserts in release mode
  */
 #ifndef DEBUG
-
-    // TODO: Check this for release
-    //#undef BOOT_CFG_DEBUG_EN
-    //#define BOOT_CFG_DEBUG_EN 0
+    #undef BOOT_CFG_DEBUG_EN
+    #define BOOT_CFG_DEBUG_EN 0
 
     #undef BOOT_CFG_ASSERT_EN
     #define BOOT_CFG_ASSERT_EN 0
