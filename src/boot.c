@@ -990,6 +990,11 @@ void boot_com_connect_rsp_msg_rcv_cb(const boot_msg_status_t msg_status)
 * @return       void
 */
 ////////////////////////////////////////////////////////////////////////////////
+
+
+#include "drivers/peripheral/iwdt/iwdt/src/iwdt.h"
+#include "drivers/peripheral/flash/flash/src/flash.h"
+
 void boot_com_prepare_msg_rcv_cb(const ver_image_header_t * const p_head)
 {
     boot_msg_status_t msg_status = eBOOT_MSG_OK;
@@ -1018,10 +1023,38 @@ void boot_com_prepare_msg_rcv_cb(const ver_image_header_t * const p_head)
                 // TODO: Assert if that address is out of some sensable address space!!!
 
                 // Erase application region flash
-                if ( eBOOT_OK != boot_if_flash_erase( p_head->data.image_addr, ( p_head->data.image_size + sizeof( ver_image_header_t ))))
+                //if ( eBOOT_OK != boot_if_flash_erase( p_head->data.image_addr, ( p_head->data.image_size + sizeof( ver_image_header_t ))))
+                //{
+                //    msg_status = eBOOT_MSG_ERROR_FLASH_ERASE;
+                //}
+
+
+                // Erase page by page and process WDT in between
+                const uint32_t addr_start = p_head->data.image_addr;
+                const uint32_t addr_stop  = addr_start + ( p_head->data.image_size + sizeof( ver_image_header_t ));
+
+                uint32_t addr_work = addr_start;
+
+                // Do until all space is erased
+                while ( addr_work <= addr_stop )
                 {
-                    msg_status = eBOOT_MSG_ERROR_FLASH_ERASE;
+                    // Erase page by page
+                    if ( eBOOT_OK != boot_if_flash_erase( addr_work, FLASH_PAGE_SIZE ))
+                    {
+                        msg_status = eBOOT_MSG_ERROR_FLASH_ERASE;
+                        break;
+                    }
+
+                    // Increment working address
+                    addr_work += FLASH_PAGE_SIZE;
+
+                    // Process WDT in between
+                    iwdt_kick();
+
+                    // TODO: Check that logic!!!
+                    BOOT_DBG_PRINT( "Erasing address: 0x%08X", addr_work );
                 }
+
             }
         }
 
