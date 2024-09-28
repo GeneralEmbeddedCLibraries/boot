@@ -35,7 +35,6 @@
 // Definitions
 ////////////////////////////////////////////////////////////////////////////////
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // Functions
 ////////////////////////////////////////////////////////////////////////////////
@@ -51,7 +50,6 @@ boot_status_t   boot_if_flash_read   	(const uint32_t addr, const uint32_t size,
 boot_status_t   boot_if_flash_erase   	(const uint32_t addr, const uint32_t size);
 
 const uint8_t * boot_if_get_public_key  (void);
-
 boot_status_t   boot_if_kick_wdt        (void);
 
 #if ( 1 == BOOT_CFG_CRYPTION_EN )

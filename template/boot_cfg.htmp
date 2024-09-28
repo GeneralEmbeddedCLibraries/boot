@@ -128,6 +128,20 @@
 #endif
 
 /**
+ *      Enable/Disable new firmware version digital signature check
+ *
+ * @note    At prepare command bootloader will check for valid
+ *          digital signature based on hash and signature field in
+ *          new image header.
+ */
+#define BOOT_CFG_DIGITAL_SIGN_EN                ( 0 )
+
+/**
+ *  Enable/Disable firmware binary encryption
+ */
+#define BOOT_CFG_CRYPTION_EN                    ( 1 )
+
+/**
  *      Enable/Disable boot counting check
  *
  * @note    Boot count is safety mechanism build into bootloader
@@ -171,7 +185,7 @@
  *
  *  Unit: ms
  */
-#define BOOT_CFG_PREPARE_IDLE_TIMEOUT_MS        ( 5000U )       // TODO: adjust these timings!!!!
+#define BOOT_CFG_PREPARE_IDLE_TIMEOUT_MS        ( 5000U )
 #define BOOT_CFG_FLASH_IDLE_TIMEOUT_MS          ( 100U )
 #define BOOT_CFG_EXIT_IDLE_TIMEOUT_MS           ( 5000U )
 
@@ -223,11 +237,6 @@
  *  Shared memory section directive for linker
  */
 #define __BOOT_CFG_SHARED_MEM__                	__attribute__((section(".shared_mem")))
-
-/**
- *  Enable/Disable firmware binary encryption
- */
-#define BOOT_CFG_CRYPTION_EN                    ( 1 )
 
 /**
  *      Enable/Disable debug mode
