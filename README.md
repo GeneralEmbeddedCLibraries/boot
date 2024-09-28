@@ -418,7 +418,7 @@ def aes_encode(plain_data):
 
 ## **Digital signature**
  - Digital signature guarantees that the code has not been altered or tampered with during transmission
- - Digital signatures ensure that only legitimate, trusted firmware can be uploaded to a device -> Improvement over current implementation
+ - Digital signatures ensure that only legitimate, trusted firmware can be uploaded to a device
  - Using ECDSA (Elliptic Curve Digital Signature Algoritm) to check signature
 
 Using OpenSSL for generate private key:
@@ -436,15 +436,10 @@ To get nice overview of private and public key:
 openssl ec -in private.pem -text -noout
 ```
 
-This will output private and public key to output:
-```
-openssl ec -in private.pem -text -noout
-```
-
 ![](doc/pic/openssl_key_show.png)
 
 
-Convert public key value that to C code and paste it into ***boot_if.c*** interface file:
+Convert public key value that to C code and paste it into ***boot_if.c*** interface file. NOTICE: *micro-ecc* expects our keys to be “represented in standard format, but without the 0x04 prefix”!
 ```C
 /**
  *      Public key
