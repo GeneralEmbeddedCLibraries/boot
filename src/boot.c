@@ -7,8 +7,8 @@
 *@brief     Bootloader
 *@author    Ziga Miklosic
 *@email     ziga.miklosic@gmail.com
-*@date      15.02.2024
-*@version   V0.2.0
+*@date      28.09.2024
+*@version   V1.0.0
 */
 ////////////////////////////////////////////////////////////////////////////////
 /*!
@@ -51,22 +51,16 @@
 /**
  *  Compatibility check with REVISION
  *
- *  Support version V1.3.x up
+ *  Support version V2.x.x up
  */
-
-// TODO: Update compatibility checks as revision submodule will become V2.0.0
-_Static_assert( 1 == VER_VER_MAJOR );
-_Static_assert( 3 <= VER_VER_MINOR );
+_Static_assert( 2 == VER_VER_MAJOR );
 
 /**
  *  Compatibility check with FSM
  *
- *  Support version V1.1.x up
+ *  Support version V2.x.x up
  */
-
-// TODO: Update compatibility checks!
-_Static_assert( 1 == FSM_VER_MAJOR );
-_Static_assert( 1 <= FSM_VER_MINOR );
+_Static_assert( 2 == FSM_VER_MAJOR );
 
 /**
  *  Compiler compatibility check
@@ -427,9 +421,6 @@ static void boot_calc_hash(const void *p_data, const uint32_t size, uint8_t * co
 *           Time execution on Cortex-M4 @150MHz:
 *               -O0:    137 ms
 *               -Ofast: 110 ms
-*
-*
-*           TODO: Measure again!
 *
 * @return       status - Status of validation
 */

@@ -17,7 +17,7 @@ Big changes to bootloader concept, not compatible with V0.x.x!
  
 ### Changes
  - Change of application header structure
- - Changed "prepare" command, now sending over complete image header
+ - Changed "prepare" command, now sending over complete image header value
 
 ---
 ## V0.2.0 - 15.02.2024

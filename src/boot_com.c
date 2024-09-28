@@ -7,8 +7,8 @@
 *@brief     Bootloader Communication
 *@author    Ziga Miklosic
 *@email     ziga.miklosic@gmail.com
-*@date      15.02.2024
-*@version   V0.2.0
+*@date      28.09.2024
+*@version   V1.0.0
 */
 ////////////////////////////////////////////////////////////////////////////////
 /*!
@@ -28,7 +28,6 @@
 #include "boot_com.h"
 #include "../../boot_cfg.h"
 #include "../../boot_if.h"
-
 
 ////////////////////////////////////////////////////////////////////////////////
 // Definitions

@@ -7,8 +7,8 @@
 *@brief     Bootloader API
 *@author    Ziga Miklosic
 *@email     ziga.miklosic@gmail.com
-*@date      15.02.2024
-*@version   V0.2.0
+*@date      28.09.2024
+*@version   V1.0.0
 */
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -38,8 +38,8 @@
 /**
  *  Module version
  */
-#define BOOT_VER_MAJOR          ( 0 )
-#define BOOT_VER_MINOR          ( 2 )
+#define BOOT_VER_MAJOR          ( 1 )
+#define BOOT_VER_MINOR          ( 0 )
 #define BOOT_VER_DEVELOP        ( 0 )
 
 ////////////////////////////////////////////////////////////////////////////////
