@@ -116,7 +116,7 @@ static boot_msg_status_t    boot_fw_ver_check           (const uint32_t fw_ver);
 static boot_msg_status_t    boot_hw_ver_check           (const uint32_t hw_ver);
 static boot_msg_status_t    boot_signature_check        (const uint8_t * const p_sig, const uint8_t * const p_hash);
 static void                 boot_init_boot_counter      (void);
-static boot_status_t        boot_prepare_flash          (const uint32_t image_addr, const uint32_t image_size);
+static boot_msg_status_t    boot_prepare_flash          (const uint32_t image_addr, const uint32_t image_size);
 
 // FSM state handlers
 static void boot_fsm_idle_hndl      (const p_fsm_t fsm_inst);
@@ -806,9 +806,9 @@ static void boot_init_boot_counter(void)
 * @return       status      - Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
-static boot_status_t boot_prepare_flash(const uint32_t image_addr, const uint32_t image_size)
+static boot_msg_status_t boot_prepare_flash(const uint32_t image_addr, const uint32_t image_size)
 {
-    boot_status_t status = eBOOT_OK;
+    boot_msg_status_t msg_status = eBOOT_MSG_OK;
 
     // Get end image address
     // NOTE: -1 as it starts counting from address index 0! Image header is not counted into image size!
@@ -822,7 +822,7 @@ static boot_status_t boot_prepare_flash(const uint32_t image_addr, const uint32_
         // Erase page by page
         if ( eBOOT_OK != boot_if_flash_erase( addr_work, FLASH_PAGE_SIZE ))
         {
-            status = eBOOT_ERROR;
+            msg_status = eBOOT_MSG_ERROR_FLASH_ERASE;
             break;
         }
 
@@ -833,7 +833,7 @@ static boot_status_t boot_prepare_flash(const uint32_t image_addr, const uint32_
         boot_if_kick_wdt();
     }
 
-    return status;
+    return msg_status;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1031,6 +1031,37 @@ void boot_com_connect_rsp_msg_rcv_cb(const boot_msg_status_t msg_status)
 * @return       void
 */
 ////////////////////////////////////////////////////////////////////////////////
+
+
+
+static boot_msg_status_t boot_pre_validate_image(const ver_image_header_t * const p_head)
+{
+    boot_msg_status_t msg_status = eBOOT_MSG_OK;
+
+    // Check for FW size
+    msg_status |= boot_fw_size_check( p_head->data.image_size );
+
+    // Check for FW version compatibility
+    msg_status |= boot_fw_ver_check( p_head->data.sw_ver );
+
+    // Check for HW version compatibility
+    msg_status |= boot_hw_ver_check( p_head->data.hw_ver );
+
+    // Check for authentic image
+    msg_status |= boot_signature_check((const uint8_t*) &p_head->data.signature, (const uint8_t*) &p_head->data.hash );
+
+    // NOTE: For now only application image is supported
+    // TODO: To support other type of images change that logic!
+    if ( eVER_IMAGE_TYPE_APP != p_head->ctrl.image_type )
+    {
+        msg_status = eBOOT_MSG_ERROR_VALIDATION;
+    }
+
+    return msg_status;
+}
+
+
+
 void boot_com_prepare_msg_rcv_cb(const ver_image_header_t * const p_head)
 {
     boot_msg_status_t msg_status = eBOOT_MSG_OK;
@@ -1041,26 +1072,11 @@ void boot_com_prepare_msg_rcv_cb(const ver_image_header_t * const p_head)
         // Validate image header
         if ( eBOOT_OK == boot_app_header_check( p_head ))
         {
-            // Check for FW size
-            msg_status |= boot_fw_size_check( p_head->data.image_size );
-
-            // Check for FW version compatibility
-            msg_status |= boot_fw_ver_check( p_head->data.sw_ver );
-
-            // Check for HW version compatibility
-            msg_status |= boot_hw_ver_check( p_head->data.hw_ver );
-
-            // Check for authentic image
-            msg_status |= boot_signature_check((const uint8_t*) &p_head->data.signature, (const uint8_t*) &p_head->data.hash );
-
-            // Everything OK
-            if ( eBOOT_MSG_OK == msg_status )
+            // Image pre-valudation OK
+            if ( eBOOT_MSG_OK == boot_pre_validate_image( p_head ))
             {
                 // Prepare flash memory for new image
-                if ( eBOOT_OK != boot_prepare_flash( p_head->data.image_addr, p_head->data.image_size ))
-                {
-                    msg_status = eBOOT_MSG_ERROR_FLASH_ERASE;
-                }
+                msg_status = boot_prepare_flash( BOOT_CFG_APP_HEAD_ADDR, p_head->data.image_size );
             }
         }
 
