@@ -6,7 +6,9 @@ Main features of bootloader:
     + Application size check
     + Application SW compatibility check
     + Application HW compatibility check
-    + Downgrade protection
+    + Downgrade protection 
+ - ECDSA Digital signature validation
+ - AES-CTR Image encryption
  - Communication agnostics
  - Sharing data between bootloader and application via *.noinit* RAM section
  - Detection of reboot loop due to corrupted application
@@ -25,11 +27,12 @@ Bootloader has custom, lightweight and pyhsical layer agnostics communication in
 Bootloader and application data exchange takes over special RAM section defined as non-initialized aka. *.noinit* section. 
 
 Following data is being exhange between bootloader and application:
- 1. **Boot reason**: Booting reason, to tell bootloader what actions shall be taken, either loading new image via PC or external FLASH, or just jump to application
- 2. **Boot counter**: Safety/Reliablity counter that gets incerement on each boot by bootloader and later cleared by application after couple of minutes of stable operation
+ 1. **Bootloader version**: Software version of bootloader
+ 2. **Boot reason**: Booting reason, to tell bootloader what actions shall be taken, either loading new image via PC or external FLASH, or just jump to application
+ 3. **Boot counter**: Safety/Reliablity counter that gets incerement on each boot by bootloader and later cleared by application after couple of minutes of stable operation
 
-Shared memory space V1 is 32 bytes in size with following data structure:
-![](doc/pic/Shared_Memory_V1.png)
+Shared memory space is 32 bytes in size with following data structure:
+![](doc/pic/Shared_Memory_NEW_V1.png)
 
 Setup linker script for common shared memory between bootloader and application by first defining new memory inside RAM called ***SHARED_MEM*** region:
 
@@ -79,6 +82,7 @@ Bootloader support up to four different validation criteria for new application 
  2. Application SW compatibility check
  3. Application HW compatibility check
  4. Downgrade protection
+ 5. Firmware digital signature (ECDSA)
 
 ### **1. Application size check**
 Bootloader can check if new application will fit into reserved application flash by defining maximum application size and enabling app size check.
@@ -172,6 +176,25 @@ Downgrade enable/disable configuration in ***boot_cfg.h***:
  *          has higher version than current, if that macro is enabled!
  */
 #define BOOT_CFG_FW_DOWNGRADE_EN                ( 1 )
+```
+
+### **5. Digital signature - ECDSA**
+Bootloader can detect invalid image by checking its digital signature by enabling *BOOT_CFG_DIGITAL_SIGN_EN*. 
+
+Using Elliptic Curve Digital Signature Algorithm (ECDSA) with a help of external libraries:
+ - [micro_ecc](https://github.com/kmackay/micro-ecc)
+ - [CIFRA](https://github.com/ctz/cifra)
+
+Digital signature enable/disable configuration in ***boot_cfg.h***:
+```C
+/**
+ *      Enable/Disable new firmware version digital signature check
+ *
+ * @note    At prepare command bootloader will check for valid
+ *          digital signature based on hash and signature field in
+ *          new image header.
+ */
+#define BOOT_CFG_DIGITAL_SIGN_EN                ( 0 )
 ```
 
 ## **Catching reboot loops**
@@ -393,6 +416,122 @@ def aes_encode(plain_data):
 **NOTICE: Don't forget to change AES Key and Initial Vector (IV) for your end application!**
 
 
+## **Digital signature**
+ - Digital signature guarantees that the code has not been altered or tampered with during transmission
+ - Digital signatures ensure that only legitimate, trusted firmware can be uploaded to a device
+ - Using ECDSA (Elliptic Curve Digital Signature Algoritm) to check signature
+
+![](doc/pic/ecdsa_flow.png)
+
+Using OpenSSL for generate private key:
+```
+openssl ecparam -name secp256k1 -genkey -noout -out private.pem
+```
+
+To generate public key out of private:
+```
+openssl ec -in private.pem -pubout -out public.pem
+```
+
+To get nice overview of private and public key:
+```
+openssl ec -in private.pem -text -noout
+```
+
+![](doc/pic/openssl_key_show.png)
+
+
+Convert public key value that to C code and paste it into ***boot_if.c*** interface file. NOTICE: *micro-ecc* expects our keys to be “represented in standard format, but without the 0x04 prefix”!
+```C
+/**
+ *      Public key
+ *
+ *  @note   Generated with OpenSSL tool!
+ */
+static const uint8_t gu8_public_key[64] =
+{
+    0x1c, 0xd6, 0x14, 0x38, 0x06, 0xfc, 0x17, 0x7d, 0x39, 0x9e, 0x0b, 0xa7, 0xcf,
+    0x79, 0xfc, 0x67, 0x77, 0xa2, 0x60, 0x38, 0x08, 0x02, 0xd8, 0xbb, 0xcd, 0x15,
+    0x29, 0x24, 0xc6, 0x3c, 0xb7, 0x78, 0x59, 0x95, 0x30, 0xf9, 0x33, 0x05, 0x21,
+    0x10, 0xe9, 0x73, 0x5f, 0x1a, 0xed, 0x18, 0x12, 0x2f, 0x14, 0x76, 0xae, 0xe5,
+    0x32, 0x61, 0x8f, 0xfd, 0xa8, 0x38, 0x27, 0x6d, 0x76, 0x1f, 0x37, 0xb7
+};
+```
+
+**NOTICE: Generate your own pair of private and public key!**
+
+New firmware digital signature and hash needs to be calculated in post-build proces using some sort of script or program. Following Python snipped provides example how to produce signature and hash using ***ECDSA secp256k1*** method:
+
+```Python
+import hashlib
+from ecdsa import SigningKey
+from ecdsa.util import sigencode_string
+
+# ===============================================================================
+# @brief  Generate ECDSA signature
+#
+# @note     Outputed signature is 64 bytes long!
+#
+# @param[in]    data        - Inputed data to sign
+# @param[in]    key_file    - Private key file location
+# @return       sig         - Digital signature
+# ===============================================================================
+def generate_signature(data, key_file):
+
+    with open(key_file, "r") as f:
+        key_pem = f.read()
+
+    key = SigningKey.from_pem(key_pem)
+    sig = key.sign_deterministic(data, hashfunc=hashlib.sha256, sigencode=sigencode_string)
+
+    return bytearray( sig )
+
+# ===============================================================================
+# @brief  Generate SHA256 hash
+#
+# @note     Outputed hash is 32 bytes long!
+#
+# @param[in]    data - Inputed data to hash 
+# @return       hash - Hash of inputed data
+# ===============================================================================
+def generate_hash(data):
+
+    # Create an SHA-256 hash object
+    sha256_hash = hashlib.sha256()
+
+    # Update the hash object with the data
+    sha256_hash.update(data)
+
+    # Get the hexadecimal digest of the hash
+    hash = sha256_hash.digest()
+
+    return bytearray( hash )
+```
+
+Later in bootloader new firmware image signature gets *pre-validated* using that generated signature and hash values. C code snipped that does that:
+```C
+// Create curve context
+const struct uECC_Curve_t * p_curve = uECC_secp256k1();
+
+// Public key invalid
+if ( 0 == uECC_valid_public_key( boot_if_get_public_key(), p_curve ))
+{
+    msg_status = eBOOT_MSG_ERROR_VALIDATION;
+    BOOT_DBG_PRINT( "PRE-VALIDATION ERROR: Public key invalid!" );
+}
+
+// Public key valid
+else
+{
+    // Signature invalid
+    if ( 0 == uECC_verify( boot_if_get_public_key(), p_hash, CF_SHA256_HASHSZ, p_sig, p_curve ))
+    {
+        msg_status = eBOOT_MSG_ERROR_SIGNATURE;
+        BOOT_DBG_PRINT( "PRE-VALIDATION ERROR: Signature invalid!" );
+    }
+}
+```
+
 ## **Dependencies**
 
 ### **1. Flash memory map**
@@ -428,14 +567,15 @@ root/middleware/boot/boot/"module_space"
 ## **API**
 | API Functions | Description | Prototype |
 | --- | ----------- | ----- |
-| **boot_init** | Initialization of bootloader module | boot_status_t boot_init(void) |
-| **boot_hndl** | Handle bootloader module | boot_status_t boot_hndl(void) |
-| **boot_get_state** | Get current bootlaoder state | boot_state_t boot_get_state(void) |
-| **boot_shared_mem_get_version** | Get shared memory version | boot_status_t boot_shared_mem_get_version(uint8_t * const p_version) |
-| **boot_shared_mem_set_boot_reason** | Set shared memory boot version | boot_status_t boot_shared_mem_set_boot_reason(const boot_reason_t reason) |
-| **boot_shared_mem_get_boot_reason** | Get shared memory boot version | boot_status_t boot_shared_mem_get_boot_reason(boot_reason_t * const p_reason) |
-| **boot_shared_mem_set_boot_cnt** | Set shared memory boot counter | boot_status_t boot_shared_mem_set_boot_counter(const uint8_t cnt) |
-| **boot_shared_mem_get_boot_cnt** | Get shared memory boot counter | boot_status_t boot_shared_mem_get_boot_counter(uint8_t * const p_cnt) |
+| **boot_init**                         | Initialization of bootloader module   | boot_status_t boot_init(void) |
+| **boot_hndl**                         | Handle bootloader module              | boot_status_t boot_hndl(void) |
+| **boot_get_state**                    | Get current bootlaoder state          | boot_state_t boot_get_state(void) |
+| **boot_shared_mem_get_version**       | Get shared memory version             | boot_status_t boot_shared_mem_get_version(uint8_t * const p_version) |
+| **boot_shared_mem_set_boot_reason**   | Set shared memory boot version        | boot_status_t boot_shared_mem_set_boot_reason(const boot_reason_t reason) |
+| **boot_shared_mem_get_boot_reason**   | Get shared memory boot version        | boot_status_t boot_shared_mem_get_boot_reason(boot_reason_t * const p_reason) |
+| **boot_shared_mem_set_boot_cnt**      | Set shared memory boot counter        | boot_status_t boot_shared_mem_set_boot_counter(const uint8_t cnt) |
+| **boot_shared_mem_get_boot_cnt**      | Get shared memory boot counter        | boot_status_t boot_shared_mem_get_boot_counter(uint8_t * const p_cnt) |
+| **boot_shared_mem_get_boot_ver**      | Get bootloader version                | boot_status_t boot_shared_mem_get_boot_ver(uint32_t * const p_boot_ver) |
 
 ## **Usage**
 
@@ -447,7 +587,7 @@ root/middleware/boot/boot/"module_space"
 | Configuration | Description |
 | --- | --- |
 | **BOOT_CFG_APP_HEAD_ADDR** 			    | Application header address in flash |
-| **BOOT_CFG_APP_HEAD_SIZE** 			    | Application header size in bytes |
+| **BOOT_CFG_APP_START_ADDR** 			    | Start of application address |
 | **BOOT_CFG_APP_SIZE** 			        | Complete (maximum) application size in bytes |
 | **BOOT_CFG_FW_SIZE_CHECK_EN** 			| Enable/Disable new firmware size check |
 | **BOOT_CFG_FW_VER_CHECK_EN** 			    | Enable/Disable new firmware version compatibility check |
@@ -461,6 +601,8 @@ root/middleware/boot/boot/"module_space"
 | **BOOT_CFG_HW_VER_MINOR** 			    | New firmware hardware compatibility minor version |
 | **BOOT_CFG_HW_VER_DEVELOP** 			    | New firmware hardware compatibility develop version |
 | **BOOT_CFG_HW_VER_TEST** 			        | New firmware hardware compatibility test version |
+| **BOOT_CFG_DIGITAL_SIGN_EN** 			    | Enable/Disable new firmware version digital signature check |
+| **BOOT_CFG_CRYPTION_EN**                  | Enable/Disable firmware binary encryption |
 | **BOOT_CFG_APP_BOOT_CNT_CHECK_EN** 	    | Enable/Disable boot counting check |
 | **BOOT_CFG_BOOT_CNT_LIMIT** 	            | Boot counts limit |
 | **BOOT_CFG_WAIT_AT_STARTUP_MS** 	        | Bootloader back-door entry timeout |
@@ -474,7 +616,6 @@ root/middleware/boot/boot/"module_space"
 | **BOOT_CFG_STATIC_ASSERT**                | Static assert definition |
 | **__BOOT_CFG_WEAK__**                     | Weak compiler directive |
 | **__BOOT_CFG_SHARED_MEM__**               | Shared memory section directive for linker |
-| **BOOT_CFG_CRYPTION_EN**                  | Enable/Disable firmware binary encryption |
 | **BOOT_CFG_DEBUG_EN**                     | Enable/Disable debug mode |
 | **BOOT_CFG_ASSERT_EN**                    | Enable/Disable assertions |
 

@@ -7,8 +7,8 @@
 *@brief     Bootloader API
 *@author    Ziga Miklosic
 *@email     ziga.miklosic@gmail.com
-*@date      15.02.2024
-*@version   V0.2.0
+*@date      28.09.2024
+*@version   V1.0.0
 */
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -38,8 +38,8 @@
 /**
  *  Module version
  */
-#define BOOT_VER_MAJOR          ( 0 )
-#define BOOT_VER_MINOR          ( 2 )
+#define BOOT_VER_MAJOR          ( 1 )
+#define BOOT_VER_MINOR          ( 0 )
 #define BOOT_VER_DEVELOP        ( 0 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -54,6 +54,7 @@ boot_status_t   boot_shared_mem_set_boot_reason     (const boot_reason_t reason)
 boot_status_t   boot_shared_mem_get_boot_reason     (boot_reason_t * const p_reason);
 boot_status_t   boot_shared_mem_set_boot_cnt        (const uint8_t cnt);
 boot_status_t   boot_shared_mem_get_boot_cnt        (uint8_t * const p_cnt);
+boot_status_t   boot_shared_mem_get_boot_ver        (uint32_t * const p_boot_ver);
 
 #endif // __BOOT_H
 

@@ -5,6 +5,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project/module adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
+## V1.0.0 - 28.09.2024
+
+### Notice
+Big changes to bootloader concept, not compatible with V0.x.x!
+
+### Added
+ - ECDSA Digital signature validation
+ - AES-CTR Firmware encryption
+ - Option to configure pre/post validation of the image based on its header info
+ 
+### Changes
+ - Change of application header structure
+ - Changed "prepare" command, now sending over complete image header value
+
+---
 ## V0.2.0 - 15.02.2024
 
 ### Added

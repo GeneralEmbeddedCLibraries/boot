@@ -7,8 +7,8 @@
 *@brief     Bootloader
 *@author    Ziga Miklosic
 *@email     ziga.miklosic@gmail.com
-*@date      15.02.2024
-*@version   V0.2.0
+*@date      28.09.2024
+*@version   V1.0.0
 */
 ////////////////////////////////////////////////////////////////////////////////
 /*!
@@ -29,6 +29,10 @@
 #include "boot_com.h"
 #include "../../boot_if.h"
 
+// External libs
+#include "micro_ecc/uECC.h"
+#include "cifra/sha2.h"
+
 // Middleware
 #include "middleware/fsm/fsm/src/fsm.h"
 
@@ -40,33 +44,29 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 /**
+ *  Start address of application code
+ */
+#define BOOT_APP_ADDR_START     ((uint32_t*)( BOOT_CFG_APP_HEAD_ADDR + sizeof( ver_image_header_t )))
+
+/**
  *  Compatibility check with REVISION
  *
- *  Support version V1.3.x up
+ *  Support version V2.x.x up
  */
-_Static_assert( 1 == VER_VER_MAJOR );
-_Static_assert( 3 <= VER_VER_MINOR );
+_Static_assert( 2 == VER_VER_MAJOR );
 
 /**
  *  Compatibility check with FSM
  *
- *  Support version V1.1.x up
+ *  Support version V2.x.x up
  */
-_Static_assert( 1 == VER_VER_MAJOR );
-_Static_assert( 1 <= VER_VER_MINOR );
+_Static_assert( 2 == FSM_VER_MAJOR );
 
 /**
  *  Compiler compatibility check
  */
 BOOT_CFG_STATIC_ASSERT( sizeof(boot_shared_mem_t) == 32U );
-
-
-/**
- *  	Start of application address
- *
- *  @note 	Right after application header!
- */
-#define BOOT_APP_START_ADDR				        ( BOOT_CFG_APP_HEAD_ADDR + BOOT_CFG_APP_HEAD_SIZE )
+BOOT_CFG_STATIC_ASSERT( sizeof(ver_image_header_t) == 256U );
 
 /**
  *      Shared memory layout version
@@ -92,10 +92,14 @@ typedef struct
 // Function prototypes
 ////////////////////////////////////////////////////////////////////////////////
 static uint8_t              boot_calc_crc               (const uint8_t * const p_data, const uint16_t size);
-static boot_status_t        boot_app_head_read          (ver_app_header_t * const p_head);
+static boot_status_t        boot_app_head_read          (const ver_image_header_t * p_head);
 static boot_status_t        boot_app_head_erase         (void);
-static uint8_t              boot_app_head_calc_crc      (const ver_app_header_t * const p_head);
-static uint32_t             boot_fw_image_calc_crc      (const uint32_t size);
+static uint8_t              boot_app_head_calc_crc      (const ver_image_header_t * const p_head);
+static boot_status_t        boot_app_header_check       (const ver_image_header_t * const p_head);
+
+static boot_status_t        boot_fw_image_check_crc     (const ver_image_header_t * const p_head);
+static boot_status_t        boot_fw_image_check_sig     (const ver_image_header_t * const p_head);
+static void                 boot_calc_hash              (const void *p_data, const uint32_t size, uint8_t * const p_hash_out);
 static boot_status_t        boot_fw_image_validate      (void);
 static boot_status_t        boot_start_application      (void);
 static boot_status_t        boot_shared_mem_calc_crc    (const boot_shared_mem_t * const p_mem);
@@ -104,14 +108,16 @@ static void                 boot_wait                   (const uint32_t ms);
 static boot_msg_status_t    boot_fw_size_check          (const uint32_t fw_size);
 static boot_msg_status_t    boot_fw_ver_check           (const uint32_t fw_ver);
 static boot_msg_status_t    boot_hw_ver_check           (const uint32_t hw_ver);
+static boot_msg_status_t    boot_signature_check        (const uint8_t * const p_sig, const uint8_t * const p_hash);
 static void                 boot_init_boot_counter      (void);
+static boot_msg_status_t    boot_prepare_flash          (const uint32_t image_addr, const uint32_t image_size);
+static boot_msg_status_t    boot_pre_validate_image     (const ver_image_header_t * const p_head);
 
 // FSM state handlers
-static void boot_fsm_idle_hndl      (void);
-static void boot_fsm_prepare_hndl   (void);
-static void boot_fsm_flash_hndl     (void);
-static void boot_fsm_exit_hndl      (void);
-
+static void boot_fsm_idle_hndl      (const p_fsm_t fsm_inst);
+static void boot_fsm_prepare_hndl   (const p_fsm_t fsm_inst);
+static void boot_fsm_flash_hndl     (const p_fsm_t fsm_inst);
+static void boot_fsm_exit_hndl      (const p_fsm_t fsm_inst);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Variables
@@ -128,21 +134,16 @@ static volatile boot_shared_mem_t __BOOT_CFG_SHARED_MEM__ g_boot_shared_mem;
 static p_fsm_t g_boot_fsm = NULL;
 
 /**
- *  Bootloader FSM State Configurations
+ * FSM state table
  */
 static const fsm_cfg_t g_boot_fsm_cfg_table =
 {
-    /**
-     *      State functions
-     *
-     *  NOTE: Sequence matters!
-     */
-    .state =
+    .p_states = (fsm_state_cfg_t[])
     {
-        [eBOOT_STATE_IDLE]    = { .func = boot_fsm_idle_hndl,     .name = "IDLE"      },
-        [eBOOT_STATE_PREPARE] = { .func = boot_fsm_prepare_hndl,  .name = "PREPARE"   },
-        [eBOOT_STATE_FLASH]   = { .func = boot_fsm_flash_hndl,    .name = "FLASH"     },
-        [eBOOT_STATE_EXIT]    = { .func = boot_fsm_exit_hndl,     .name = "EXIT"      },
+        [eBOOT_STATE_IDLE]      = {.on_entry=NULL, .on_activity=boot_fsm_idle_hndl,     .on_exit=NULL, .name="IDLE"     },
+        [eBOOT_STATE_PREPARE]   = {.on_entry=NULL, .on_activity=boot_fsm_prepare_hndl,  .on_exit=NULL, .name="PREPARE"  },
+        [eBOOT_STATE_FLASH]     = {.on_entry=NULL, .on_activity=boot_fsm_flash_hndl,    .on_exit=NULL, .name="FLASH"    },
+        [eBOOT_STATE_EXIT]      = {.on_entry=NULL, .on_activity=boot_fsm_exit_hndl,     .on_exit=NULL, .name="EXIT"     },
     },
     .name   = "Boot FSM",
     .num_of = eBOOT_STATE_NUM_OF,
@@ -152,7 +153,6 @@ static const fsm_cfg_t g_boot_fsm_cfg_table =
  *  Flashing data
  */
 static boot_flashing_t g_boot_flashing = { 0 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 // Functions
@@ -201,23 +201,15 @@ static uint8_t boot_calc_crc(const uint8_t * const p_data, const uint16_t size)
 * @return       status	- Status of operation
 */
 ////////////////////////////////////////////////////////////////////////////////
-static boot_status_t boot_app_head_read(ver_app_header_t * const p_head)
+static boot_status_t boot_app_head_read(const ver_image_header_t * p_head)
 {
     boot_status_t status = eBOOT_OK;
 
     // Read application header
-    if ( eBOOT_OK == boot_if_flash_read( BOOT_CFG_APP_HEAD_ADDR, BOOT_CFG_APP_HEAD_SIZE, (uint8_t*) p_head ))
+    if ( eBOOT_OK == boot_if_flash_read( BOOT_CFG_APP_HEAD_ADDR, sizeof(ver_image_header_t), (uint8_t*) p_head ))
     {
-        // Calculate application header crc
-        const uint8_t app_head_crc_calc = boot_app_head_calc_crc( p_head );
-
-        // Check CRC
-        if ( app_head_crc_calc != p_head->crc )
-        {
-            // Application header corrupted
-            status = eBOOT_ERROR_CRC;
-            BOOT_DBG_PRINT( "ERROR: Application header corrupted!" );
-        }
+        // Validate (check) application heaer
+        status = boot_app_header_check( p_head );
     }
     else
     {
@@ -243,7 +235,7 @@ static boot_status_t boot_app_head_erase(void)
     boot_status_t status = eBOOT_OK;
 
     // Erase application header
-    if ( eBOOT_OK != boot_if_flash_erase( BOOT_CFG_APP_HEAD_ADDR, BOOT_CFG_APP_HEAD_SIZE ))
+    if ( eBOOT_OK != boot_if_flash_erase( BOOT_CFG_APP_HEAD_ADDR, sizeof(ver_image_header_t)))
     {
         status = eBOOT_ERROR;
     }
@@ -259,42 +251,70 @@ static boot_status_t boot_app_head_erase(void)
 * @return       crc8    - CRC8 of application header
 */
 ////////////////////////////////////////////////////////////////////////////////
-static uint8_t boot_app_head_calc_crc(const ver_app_header_t * const p_head)
+static uint8_t boot_app_head_calc_crc(const ver_image_header_t * const p_head)
 {
     uint8_t crc8 = 0U;
 
     // Calculate CRC
-    // NOTE: Ignore CRC value at the end (-1)
-    crc8 = boot_calc_crc((uint8_t*) p_head, ( BOOT_CFG_APP_HEAD_SIZE - 1U ));
+    // NOTE: Skip CRC at the end and start calculation at version field!
+    crc8 = boot_calc_crc((uint8_t*) &(p_head->ctrl.ver), ( sizeof(ver_image_header_t) - 1U ));
 
     return crc8;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
-*       Calculate firmware image CRC
+*       Validate (check) application header
 *
-* @note	 	Firmware image CRC is being calculated only across application code,
-* 			application header is not included into CRC calculations.
-*
-* @note		This function expects application header at the top
-* 			of new firmware image!
-*
-* @param[in]    size 	- Size of firmware image in bytes
-* @return       crc32   - CRC32 of application image
+* @param[in]    p_head  - Pointer to application header
+* @return       status  - Validation status of app header
 */
 ////////////////////////////////////////////////////////////////////////////////
-static uint32_t boot_fw_image_calc_crc(const uint32_t size)
+static boot_status_t boot_app_header_check(const ver_image_header_t * const p_head)
 {
-    const   uint32_t    poly    = 0x04C11DB7;
-    const   uint32_t    seed    = 0x10101010;
-            uint32_t    crc32   = seed;
-            uint8_t     data    = 0U;
+    boot_status_t status = eBOOT_OK;
 
-    for (uint32_t i = 0; i < ( size - BOOT_CFG_APP_HEAD_SIZE ); i++)
+    // Calculate application header crc
+    const uint8_t app_head_crc_calc = boot_app_head_calc_crc( p_head );
+
+    // Check CRC
+    if ( app_head_crc_calc != p_head->ctrl.crc )
+    {
+        // Application header corrupted
+        status = eBOOT_ERROR_CRC;
+        BOOT_DBG_PRINT( "ERROR: Application header corrupted!" );
+    }
+
+    return status;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Check firmware image CRC32
+*
+* @note     Firmware image CRC is being calculated only across application code,
+*           application header is not included into CRC calculations.
+*
+* @note     This function expects application header at the top
+*           of new firmware image!
+*
+* @param[in]    p_head  - Image (app) header
+* @return       status  - Status of validation
+*/
+////////////////////////////////////////////////////////////////////////////////
+static boot_status_t boot_fw_image_check_crc(const ver_image_header_t * const p_head)
+{
+            boot_status_t   status  = eBOOT_OK;
+    const   uint32_t    	poly    = 0x04C11DB7;
+    const   uint32_t    	seed    = 0x10101010;
+            uint32_t    	crc32   = seed;
+            uint8_t     	data    = 0U;
+
+    // Calculate CRC
+    for (uint32_t i = 0; i < p_head->data.image_size; i++)
     {
     	// Ignore application header from CRC calc
-        const uint32_t addr = BOOT_CFG_APP_HEAD_ADDR + BOOT_CFG_APP_HEAD_SIZE + i;
+        const uint32_t addr = BOOT_CFG_APP_HEAD_ADDR + sizeof(ver_image_header_t) + i;
 
         // Read byte from application
         (void) boot_if_flash_read( addr, 1U, (uint8_t*)&data );
@@ -315,60 +335,152 @@ static uint32_t boot_fw_image_calc_crc(const uint32_t size)
         }
     }
 
-    return ( crc32 & 0xFFFFFFFFU );
+    // Check CRC
+    if (( crc32 & 0xFFFFFFFFU ) != p_head->data.image_crc )
+    {
+        status = eBOOT_ERROR;
+        BOOT_DBG_PRINT( "POST-VALIDATION ERROR: Firmware image CRC invalid!" );
+    }
+
+    return status;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Check firmware image digital signature using ECSDA
+*
+* @param[in]    p_head  - Image (app) header
+* @return       status  - Status of validation
+*/
+////////////////////////////////////////////////////////////////////////////////
+static boot_status_t boot_fw_image_check_sig(const ver_image_header_t * const p_head)
+{
+            boot_status_t   status                  = eBOOT_OK;
+    static  uint8_t         hash[CF_SHA256_HASHSZ]  = {0};
+
+    // Clean hash value
+    memset( hash, 0U, sizeof(hash));
+
+    // Get application image start address
+    void * addr = BOOT_APP_ADDR_START;
+
+    // Calculate image hash
+    boot_calc_hash( addr, p_head->data.image_size, hash );
+
+    // Create curve context
+    const struct uECC_Curve_t * p_curve = uECC_secp256k1();
+
+    // Public key invalid
+    if ( 0 == uECC_valid_public_key( boot_if_get_public_key(), p_curve ))
+    {
+        status = eBOOT_ERROR;
+        BOOT_DBG_PRINT( "POST-VALIDATION ERROR: Public key invalid!" );
+    }
+
+    // Public key valid
+    else
+    {
+        // Signature invalid
+        if ( 0 == uECC_verify( boot_if_get_public_key(), hash, CF_SHA256_HASHSZ, p_head->data.signature, p_curve ))
+        {
+            status = eBOOT_ERROR;
+            BOOT_DBG_PRINT( "POST-VALIDATION ERROR: Signature invalid!" );
+        }
+    }
+
+    return status;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Calculate image hash
+*
+* @brief    That function generates SHA256 of inputed data!
+*
+* @param[in]    p_data      - Inputed data
+* @param[in]    size        - Size of inputed data
+* @param[out]   p_hash_out  - Hash-SHA256 if inputed data
+* @return       void
+*/
+////////////////////////////////////////////////////////////////////////////////
+static void boot_calc_hash(const void *p_data, const uint32_t size, uint8_t * const p_hash_out)
+{
+  cf_sha256_context ctx;
+  cf_sha256_init(&ctx);
+  cf_sha256_update(&ctx, p_data, size);
+  cf_sha256_digest_final(&ctx, p_hash_out);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
 *       Validate firmware image
 *
-* @note 	That function checks for application header CRC and complete
-* 			firmware image CRC.
+* @note     That function checks for application header CRC and complete
+*           firmware image CRC.
 *
-* 			Time execution on Cortex-M4 @150MHz:
-* 			    -O0:    137 ms
-* 			    -Ofast: 110 ms
+*           Time execution on Cortex-M4 @150MHz:
+*               -O0:    137 ms
+*               -Ofast: 110 ms
 *
 * @return       status - Status of validation
 */
 ////////////////////////////////////////////////////////////////////////////////
 static boot_status_t boot_fw_image_validate(void)
 {
-    static  ver_app_header_t app_header = {0};
-            boot_status_t    status     = eBOOT_OK;
+            boot_status_t       status      = eBOOT_OK;
+    static  ver_image_header_t  app_header  = {0};
 
     // Read application header
-    status = boot_app_head_read( &app_header );
+    status = boot_app_head_read((ver_image_header_t*) &app_header );
 
     // Application header OK
     if ( eBOOT_OK == status )
     {
-    	// Calculate firmware image crc
-    	const uint32_t fw_crc_calc = boot_fw_image_calc_crc( app_header.app_size );
+        // Check for ECSDA signature
+        if ( eVER_SIG_TYPE_ECSDA == app_header.data.sig_type )
+        {
+            BOOT_DBG_PRINT( "Image validation method: ECDSA" );
+            status = boot_fw_image_check_sig((ver_image_header_t*) &app_header );
+        }
 
-    	// FW image CRC valid
-    	if ( app_header.app_crc == fw_crc_calc )
-    	{
-    		BOOT_DBG_PRINT( "Firmware image OK!" );
-    	}
+        // Check for image CRC only when signature is disabled
+        else if ( eVER_SIG_TYPE_NONE == app_header.data.sig_type )
+        {
+            BOOT_DBG_PRINT( "Image validation method: CRC" );
+            status = boot_fw_image_check_crc( (ver_image_header_t*) &app_header );
+        }
 
-    	// FW image corrupted
-    	else
-    	{
-        	status = eBOOT_ERROR_CRC;
+        // Other validation methods
+        else
+        {
+            // Add support for new validation method
+            BOOT_DBG_PRINT( "ERROR: Image validation method: UNDEFINED" );
+            BOOT_ASSERT(0);
+        }
+
+        // Image validation OK
+        if ( eBOOT_OK == status )
+        {
+            BOOT_DBG_PRINT( "Firmware image validated OK!" );
+        }
+
+        // FW image corrupted - validation error
+        else
+        {
+            status = eBOOT_ERROR;
 
             /**
              *  Erase application header -> This will enable re-flashing
              *  same version of application as FW compatibility checks
              *  will not failed!
              */
-        	(void) boot_app_head_erase();
+            (void) boot_app_head_erase();
 
-        	BOOT_DBG_PRINT( "ERROR: Firmware image corrupted!" );
-    	}
+            BOOT_DBG_PRINT( "ERROR: Firmware image corrupted! Validation failed!" );
+        }
     }
 
-	return status;
+    return status;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -394,10 +506,10 @@ static boot_status_t boot_start_application(void)
 	if ( eBOOT_OK == status )
 	{
 		// Set stack pointer
-		__set_MSP( BOOT_APP_START_ADDR );
+		__set_MSP( BOOT_CFG_APP_START_ADDR );
 
 		// Next address is reset vector for app
-		const uint32_t app_addr = *(uint32_t*)( BOOT_APP_START_ADDR + 4U );
+		const uint32_t app_addr = *(uint32_t*)( BOOT_CFG_APP_START_ADDR + 4U );
 		p_func p_app = (p_func) app_addr;
 
 		// Start Application
@@ -421,7 +533,7 @@ static boot_status_t boot_shared_mem_calc_crc(const boot_shared_mem_t * const p_
 
     // Calculate crc
     // NOTE: Ignore CRC value at the end (-1)
-    crc8 = boot_calc_crc((uint8_t*) p_mem, ( sizeof(boot_shared_mem_t) - 1U ));
+    crc8 = boot_calc_crc((uint8_t*) &( p_mem->ctrl.ver ), ( sizeof(boot_shared_mem_t) - 1U ));
 
     return crc8;
 }
@@ -438,27 +550,30 @@ static boot_status_t boot_shared_mem_calc_crc(const boot_shared_mem_t * const p_
 static void boot_init_shared_mem(void)
 {
     // Shared memory CRC OK
-    if ( boot_shared_mem_calc_crc((const boot_shared_mem_t *) &g_boot_shared_mem ) == g_boot_shared_mem.crc )
+    if ( boot_shared_mem_calc_crc((const boot_shared_mem_t *) &g_boot_shared_mem ) == g_boot_shared_mem.ctrl.crc )
     {
         // Count boot ups
-        if ( g_boot_shared_mem.boot_cnt < UINT8_MAX )
+        if ( g_boot_shared_mem.data.boot_cnt < UINT8_MAX )
         {
-            g_boot_shared_mem.boot_cnt++;
+            g_boot_shared_mem.data.boot_cnt++;
         }
     }
 
     // CRC error
     else
     {
-        g_boot_shared_mem.boot_cnt      = 0U;
-        g_boot_shared_mem.boot_reason   = eBOOT_REASON_NONE;
+        g_boot_shared_mem.data.boot_cnt      = 0U;
+        g_boot_shared_mem.data.boot_reason   = eBOOT_REASON_NONE;
+
+        BOOT_DBG_PRINT( "ERROR: Shared memory corrupted!" );
     }
 
-    // Set shared mem version
-    g_boot_shared_mem.ver = BOOT_SHARED_MEM_VER;
+    // Set shared memory data
+    g_boot_shared_mem.ctrl.ver      = BOOT_SHARED_MEM_VER;
+    g_boot_shared_mem.data.boot_ver = version_get_sw().U;
 
     // Calculate CRC
-    g_boot_shared_mem.crc = boot_shared_mem_calc_crc((const boot_shared_mem_t *) &g_boot_shared_mem );
+    g_boot_shared_mem.ctrl.crc = boot_shared_mem_calc_crc((const boot_shared_mem_t *) &g_boot_shared_mem );
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -485,6 +600,9 @@ static void boot_wait(const uint32_t ms)
             // Handle bootloader tasks
             boot_hndl();
 
+            // Process WDT
+            boot_if_kick_wdt();
+
             // Increment safety counter
             safety_cnt++;
         }
@@ -501,14 +619,14 @@ static void boot_wait(const uint32_t ms)
 ////////////////////////////////////////////////////////////////////////////////
 static boot_msg_status_t boot_fw_size_check(const uint32_t fw_size)
 {
-    boot_msg_status_t status = eBOOT_MSG_OK;
+    boot_msg_status_t msg_status = eBOOT_MSG_OK;
 
     #if ( 1 == BOOT_CFG_FW_SIZE_CHECK_EN )
 
         // New application image to big!
-        if ( fw_size > BOOT_CFG_APP_SIZE )
+        if ( fw_size > BOOT_CFG_APP_SIZE_MAX )
         {
-            status = eBOOT_MSG_ERROR_FW_SIZE;
+            msg_status = eBOOT_MSG_ERROR_FW_SIZE;
         }
 
     #else
@@ -516,7 +634,7 @@ static boot_msg_status_t boot_fw_size_check(const uint32_t fw_size)
         (void) fw_size;
     #endif
 
-    return status;
+    return msg_status;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -529,7 +647,7 @@ static boot_msg_status_t boot_fw_size_check(const uint32_t fw_size)
 ////////////////////////////////////////////////////////////////////////////////
 static boot_msg_status_t boot_fw_ver_check(const uint32_t fw_ver)
 {
-    boot_msg_status_t status = eBOOT_MSG_OK;
+    boot_msg_status_t msg_status = eBOOT_MSG_OK;
 
     #if ( 1 == BOOT_CFG_FW_VER_CHECK_EN )
 
@@ -540,7 +658,7 @@ static boot_msg_status_t boot_fw_ver_check(const uint32_t fw_ver)
         // New application firmware version not supported!
         if ( fw_ver > fw_ver_lim )
         {
-            status = eBOOT_MSG_ERROR_FW_VER;
+            msg_status = eBOOT_MSG_ERROR_FW_VER;
         }
 
     #else
@@ -550,7 +668,7 @@ static boot_msg_status_t boot_fw_ver_check(const uint32_t fw_ver)
 
 #if ( 0 == BOOT_CFG_FW_DOWNGRADE_EN )
 
-        ver_app_header_t app_header = {0};
+        static ver_image_header_t app_header = {0};
 
         // Application header valid
         if ( eBOOT_OK == boot_app_head_read( &app_header ))
@@ -558,13 +676,13 @@ static boot_msg_status_t boot_fw_ver_check(const uint32_t fw_ver)
             // If new application version is older of the same -> invalid firmware version
             if ( fw_ver <= app_header.sw_ver )
             {
-                status = eBOOT_MSG_ERROR_FW_VER;
+                msg_status = eBOOT_MSG_ERROR_FW_VER;
             }
         }
 
 #endif
 
-    return status;
+    return msg_status;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -577,7 +695,7 @@ static boot_msg_status_t boot_fw_ver_check(const uint32_t fw_ver)
 ////////////////////////////////////////////////////////////////////////////////
 static boot_msg_status_t boot_hw_ver_check(const uint32_t hw_ver)
 {
-    boot_msg_status_t status = eBOOT_MSG_OK;
+    boot_msg_status_t msg_status = eBOOT_MSG_OK;
 
     #if ( 1 == BOOT_CFG_HW_VER_CHECK_EN )
 
@@ -588,7 +706,7 @@ static boot_msg_status_t boot_hw_ver_check(const uint32_t hw_ver)
         // New application firmware version not supported!
         if ( hw_ver > hw_ver_lim )
         {
-            status = eBOOT_MSG_ERROR_HW_VER;
+            msg_status = eBOOT_MSG_ERROR_HW_VER;
         }
 
     #else
@@ -596,7 +714,51 @@ static boot_msg_status_t boot_hw_ver_check(const uint32_t hw_ver)
         (void) hw_ver;
     #endif
 
-    return status;
+    return msg_status;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Check for new application authentic
+*
+* @param[in]    p_sig   - Iamge digital signature
+* @param[in]    p_hash  - Image hash
+* @return       status  - Status of check
+*/
+////////////////////////////////////////////////////////////////////////////////
+static boot_msg_status_t boot_signature_check(const uint8_t * const p_sig, const uint8_t * const p_hash)
+{
+    boot_msg_status_t msg_status = eBOOT_MSG_OK;
+
+#if ( 1 == BOOT_CFG_DIGITAL_SIGN_EN )
+
+    // Create curve context
+    const struct uECC_Curve_t * p_curve = uECC_secp256k1();
+
+    // Public key invalid
+    if ( 0 == uECC_valid_public_key( boot_if_get_public_key(), p_curve ))
+    {
+        msg_status = eBOOT_MSG_ERROR_VALIDATION;
+        BOOT_DBG_PRINT( "PRE-VALIDATION ERROR: Public key invalid!" );
+    }
+
+    // Public key valid
+    else
+    {
+        // Signature invalid
+        if ( 0 == uECC_verify( boot_if_get_public_key(), p_hash, CF_SHA256_HASHSZ, p_sig, p_curve ))
+        {
+            msg_status = eBOOT_MSG_ERROR_SIGNATURE;
+            BOOT_DBG_PRINT( "PRE-VALIDATION ERROR: Signature invalid!" );
+        }
+    }
+#else
+    //Unused
+    (void) p_sig;
+    (void) p_hash;
+#endif
+
+    return msg_status;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -636,17 +798,101 @@ static void boot_init_boot_counter(void)
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
+*       Prepare internal uC flash for new image
+*
+* @param[in]    image_addr  - Start of new image address
+* @param[in]    image_size  - Size of new image in bytes (note: without image header)
+* @return       status      - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
+static boot_msg_status_t boot_prepare_flash(const uint32_t image_addr, const uint32_t image_size)
+{
+    boot_msg_status_t msg_status = eBOOT_MSG_OK;
+
+    // Get end image address
+    // NOTE: -1 as it starts counting from address index 0! Image header is not counted into image size!
+    const uint32_t addr_end  = ( image_addr + (( image_size + sizeof( ver_image_header_t )) - 1U ));
+
+    uint32_t addr_work = image_addr;
+
+    // Do until all space is erased
+    while ( addr_work < addr_end )
+    {
+        // Erase page by page
+        if ( eBOOT_OK != boot_if_flash_erase( addr_work, FLASH_PAGE_SIZE ))
+        {
+            msg_status = eBOOT_MSG_ERROR_FLASH_ERASE;
+            break;
+        }
+
+        // Increment working address
+        addr_work += FLASH_PAGE_SIZE;
+
+        // Process WDT in between
+        boot_if_kick_wdt();
+    }
+
+    return msg_status;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Pre-validate new image
+*
+* @param[in]    p_head      - Image (app) header
+* @return       msg_status  - Status of validation
+*/
+////////////////////////////////////////////////////////////////////////////////
+static boot_msg_status_t boot_pre_validate_image(const ver_image_header_t * const p_head)
+{
+    boot_msg_status_t msg_status = eBOOT_MSG_OK;
+
+    // Validate image header
+    if ( eBOOT_OK == boot_app_header_check( p_head ))
+    {
+        // Check for FW size
+        msg_status |= boot_fw_size_check( p_head->data.image_size );
+
+        // Check for FW version compatibility
+        msg_status |= boot_fw_ver_check( p_head->data.sw_ver );
+
+        // Check for HW version compatibility
+        msg_status |= boot_hw_ver_check( p_head->data.hw_ver );
+
+        // Check for authentic image
+        msg_status |= boot_signature_check((const uint8_t*) &p_head->data.signature, (const uint8_t*) &p_head->data.hash );
+
+        // NOTE: For now only application image is supported
+        // TODO: To support other type of images change that logic!
+        if ( eVER_IMAGE_TYPE_APP != p_head->ctrl.image_type )
+        {
+            msg_status = eBOOT_MSG_ERROR_VALIDATION;
+        }
+    }
+
+    // Image (app) header invalid
+    else
+    {
+        msg_status = eBOOT_MSG_ERROR_VALIDATION;
+    }
+
+    return msg_status;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
 *       IDLE bootloader FSM state
 *
+* @param[in]    fsm_inst - FMS instance
 * @return       void
 */
 ////////////////////////////////////////////////////////////////////////////////
-static void boot_fsm_idle_hndl(void)
+static void boot_fsm_idle_hndl(const p_fsm_t fsm_inst)
 {
     static bool try_to_leave = false;
 
     // On first entry
-    if ( true == fsm_get_first_entry( g_boot_fsm ))
+    if ( true == fsm_get_first_entry( fsm_inst ))
     {
         // Clear flashing data informations
         memset( &g_boot_flashing, 0U, sizeof( g_boot_flashing ));
@@ -661,7 +907,7 @@ static void boot_fsm_idle_hndl(void)
     }
 
     // Get idle time duration
-    const uint32_t idle_duration = fsm_get_duration( g_boot_fsm );
+    const uint32_t idle_duration = fsm_get_duration( fsm_inst );
 
     // Exit bootloader if idle for too long, but try only once
     if  (   ( idle_duration >= BOOT_CFG_JUMP_TO_APP_TIMEOUT_MS )
@@ -687,13 +933,14 @@ static void boot_fsm_idle_hndl(void)
 /**
 *       PREPARE bootloader FSM state
 *
+* @param[in]    fsm_inst - FMS instance
 * @return       void
 */
 ////////////////////////////////////////////////////////////////////////////////
-static void boot_fsm_prepare_hndl(void)
+static void boot_fsm_prepare_hndl(const p_fsm_t fsm_inst)
 {
     // Get time in that state
-    const uint32_t state_duration = fsm_get_duration( g_boot_fsm );
+    const uint32_t state_duration = fsm_get_duration( fsm_inst );
 
     // Boot process idle for too long -> enter IDLE
     if ( state_duration >= BOOT_CFG_PREPARE_IDLE_TIMEOUT_MS )
@@ -711,15 +958,16 @@ static void boot_fsm_prepare_hndl(void)
 /**
 *       FLASH bootloader FSM state
 *
+* @param[in]    fsm_inst - FMS instance
 * @return       void
 */
 ////////////////////////////////////////////////////////////////////////////////
-static void boot_fsm_flash_hndl(void)
+static void boot_fsm_flash_hndl(const p_fsm_t fsm_inst)
 {
     // Get time in that state
-    const uint32_t state_duration = fsm_get_duration( g_boot_fsm );
+    const uint32_t state_duration = fsm_get_duration( fsm_inst );
 
-    // Calcualte time pass from last rx packet
+    // Calculate time pass from last rx packet
     const uint32_t time_from_last_rx = (uint32_t) ( BOOT_GET_SYSTICK() - boot_com_get_last_rx_timestamp());
 
     // After a while in flash state
@@ -742,13 +990,14 @@ static void boot_fsm_flash_hndl(void)
 /**
 *       EXIT bootloader FSM state
 *
+* @param[in]    fsm_inst - FMS instance
 * @return       void
 */
 ////////////////////////////////////////////////////////////////////////////////
-static void boot_fsm_exit_hndl(void)
+static void boot_fsm_exit_hndl(const p_fsm_t fsm_inst)
 {
     // Get time in that state
-    const uint32_t state_duration = fsm_get_duration( g_boot_fsm );
+    const uint32_t state_duration = fsm_get_duration( fsm_inst );
 
     // Boot process idle for too long -> enter IDLE
     if ( state_duration >= BOOT_CFG_EXIT_IDLE_TIMEOUT_MS )
@@ -766,6 +1015,7 @@ static void boot_fsm_exit_hndl(void)
 /**
 *       Connect Bootloader Message Reception Callback
 *
+* @param[in]    fsm_inst - FMS instance
 * @return       void
 */
 ////////////////////////////////////////////////////////////////////////////////
@@ -820,36 +1070,25 @@ void boot_com_connect_rsp_msg_rcv_cb(const boot_msg_status_t msg_status)
 /**
 *       Prepare Bootloader Message Reception Callback
 *
-* @param[in]    fw_size     - Firmware size in bytes
-* @param[in]    fw_ver      - Firmware version
-* @param[in]    hw_ver      - Hardware version
+* @param[in]    p_head - Image (app) header
 * @return       void
 */
 ////////////////////////////////////////////////////////////////////////////////
-void boot_com_prepare_msg_rcv_cb(const uint32_t fw_size, const uint32_t fw_ver, const uint32_t hw_ver)
+void boot_com_prepare_msg_rcv_cb(const ver_image_header_t * const p_head)
 {
     boot_msg_status_t msg_status = eBOOT_MSG_OK;
 
     // In PREPARE state
     if ( eBOOT_STATE_PREPARE == boot_get_state())
     {
-        // Check for FW size
-        msg_status |= boot_fw_size_check( fw_size );
+        // Pre-validate image
+        msg_status = boot_pre_validate_image( p_head );
 
-        // Check for FW version compatibility
-        msg_status |= boot_fw_ver_check( fw_ver );
-
-        // Check for HW version compatibility
-        msg_status |= boot_hw_ver_check( hw_ver );
-
-        // Everything OK
+        // Image validation OK
         if ( eBOOT_MSG_OK == msg_status )
         {
-            // Erase application region flash
-            if ( eBOOT_OK != boot_if_flash_erase( BOOT_CFG_APP_HEAD_ADDR, BOOT_CFG_APP_SIZE ))
-            {
-                msg_status = eBOOT_MSG_ERROR_FLASH_ERASE;
-            }
+            // Prepare flash memory for new image
+            msg_status = boot_prepare_flash( BOOT_CFG_APP_HEAD_ADDR, p_head->data.image_size );
         }
     }
 
@@ -862,11 +1101,21 @@ void boot_com_prepare_msg_rcv_cb(const uint32_t fw_size, const uint32_t fw_ver, 
     // Enter FLASH state if every operation is OK
     if ( eBOOT_MSG_OK == msg_status )
     {
-        fsm_goto_state( g_boot_fsm, eBOOT_STATE_FLASH );
+        // Flash application header
+        if ( eBOOT_OK == boot_if_flash_write( p_head->data.image_addr, sizeof( ver_image_header_t ), (const uint8_t*) p_head ))
+        {
+            fsm_goto_state( g_boot_fsm, eBOOT_STATE_FLASH );
 
-        // Prepare flashing data
-        g_boot_flashing.fw_size         = fw_size;
-        g_boot_flashing.working_addr    = BOOT_CFG_APP_HEAD_ADDR;
+            // Prepare flashing data
+            g_boot_flashing.fw_size      = ( p_head->data.image_size );
+            g_boot_flashing.working_addr = ( p_head->data.image_addr + sizeof( ver_image_header_t ));
+        }
+
+        // Flashing application header error
+        else
+        {
+            msg_status = eBOOT_MSG_ERROR_FLASH_WRITE;
+        }
     }
 
     // Some problems during prepare operation -> enter IDLE state and wait for next command from Boot Manager
@@ -877,7 +1126,6 @@ void boot_com_prepare_msg_rcv_cb(const uint32_t fw_size, const uint32_t fw_ver, 
 
     // Send prepare msg response
     boot_com_send_prepare_rsp( msg_status );
-
 
     BOOT_DBG_PRINT( "Prepare msg received...");
 }
@@ -1044,7 +1292,7 @@ void boot_com_exit_msg_rcv_cb(void)
         }
     }
 
-    // Not in PREPARE state
+    // Not in EXIT state
     else
     {
         msg_status = eBOOT_MSG_ERROR_INVALID_REQ;
@@ -1089,7 +1337,7 @@ void boot_com_info_msg_rcv_cb(void)
     // In IDLE state
     if ( eBOOT_STATE_IDLE == boot_get_state())
     {
-        boot_ver = version_get_sw( NULL, NULL, NULL, NULL );
+        boot_ver = version_get_sw().U;
     }
 
     // Not in IDLE state
@@ -1170,7 +1418,7 @@ boot_status_t boot_init(void)
     boot_init_boot_counter();
 
     // No reason to stay in bootloader
-    if ( eBOOT_REASON_NONE == g_boot_shared_mem.boot_reason )
+    if ( eBOOT_REASON_NONE == g_boot_shared_mem.data.boot_reason )
     {
         // Application image validated OK
         if ( eBOOT_OK == boot_fw_image_validate())
@@ -1178,11 +1426,19 @@ boot_status_t boot_init(void)
             // Back door entry for bootloader
             boot_wait( BOOT_CFG_WAIT_AT_STARTUP_MS );
 
-            // Jump to application
-            boot_start_application();
+            // Check if reason has change from the back door
+            if ( eBOOT_REASON_NONE == g_boot_shared_mem.data.boot_reason )
+            {
+                // Jump to application
+                boot_start_application();
+            }
 
-            // This line is not reached as cpu starts executing application code...
+            // This line is not reached as CPU starts executing application code...
         }
+    }
+    else
+    {
+        BOOT_DBG_PRINT( "Booting reason: %d", g_boot_shared_mem.data.boot_reason );
     }
 
     /**
@@ -1206,8 +1462,13 @@ boot_status_t boot_hndl(void)
 {
     boot_status_t status = eBOOT_OK;
 
+    // TODO: Based on boot reason handle either communication or memory
+
     // Handle bootloader communication
     status |= boot_com_hndl();
+
+    // Handle memory boot procedure
+    // status |= boot_nvm_hndl();
 
     // Handle FSM
     (void) fsm_hndl( g_boot_fsm );
@@ -1252,9 +1513,9 @@ boot_status_t boot_shared_mem_get_version(uint8_t * const p_version)
     if ( NULL != p_version )
     {
         // Validate shared memory
-        if ( g_boot_shared_mem.crc == boot_shared_mem_calc_crc((const boot_shared_mem_t *) &g_boot_shared_mem ))
+        if ( g_boot_shared_mem.ctrl.crc == boot_shared_mem_calc_crc((const boot_shared_mem_t *) &g_boot_shared_mem ))
         {
-            *p_version = g_boot_shared_mem.ver;
+            *p_version = g_boot_shared_mem.ctrl.ver;
         }
         else
         {
@@ -1282,10 +1543,10 @@ boot_status_t boot_shared_mem_set_boot_reason(const boot_reason_t reason)
     boot_status_t status = eBOOT_OK;
 
     // Set reason
-    g_boot_shared_mem.boot_reason = reason;
+    g_boot_shared_mem.data.boot_reason = reason;
 
     // Calculate CRC
-    g_boot_shared_mem.crc = boot_shared_mem_calc_crc((const boot_shared_mem_t *) &g_boot_shared_mem );
+    g_boot_shared_mem.ctrl.crc = boot_shared_mem_calc_crc((const boot_shared_mem_t *) &g_boot_shared_mem );
 
     return status;
 }
@@ -1310,9 +1571,9 @@ boot_status_t boot_shared_mem_get_boot_reason(boot_reason_t * const p_reason)
     if ( NULL != p_reason )
     {
         // Validate shared memory
-        if ( g_boot_shared_mem.crc == boot_shared_mem_calc_crc((const boot_shared_mem_t *) &g_boot_shared_mem ))
+        if ( g_boot_shared_mem.ctrl.crc == boot_shared_mem_calc_crc((const boot_shared_mem_t *) &g_boot_shared_mem ))
         {
-            *p_reason = g_boot_shared_mem.boot_reason;
+            *p_reason = g_boot_shared_mem.data.boot_reason;
         }
         else
         {
@@ -1340,10 +1601,10 @@ boot_status_t boot_shared_mem_set_boot_cnt(const uint8_t cnt)
     boot_status_t status = eBOOT_OK;
 
     // Set counts
-    g_boot_shared_mem.boot_cnt = cnt;
+    g_boot_shared_mem.data.boot_cnt = cnt;
 
     // Calculate CRC
-    g_boot_shared_mem.crc = boot_shared_mem_calc_crc((const boot_shared_mem_t *) &g_boot_shared_mem );
+    g_boot_shared_mem.ctrl.crc = boot_shared_mem_calc_crc((const boot_shared_mem_t *) &g_boot_shared_mem );
 
     return status;
 }
@@ -1371,9 +1632,46 @@ boot_status_t boot_shared_mem_get_boot_cnt(uint8_t * const p_cnt)
     if ( NULL != p_cnt )
     {
         // Validate shared memory
-        if ( g_boot_shared_mem.crc == boot_shared_mem_calc_crc((const boot_shared_mem_t *) &g_boot_shared_mem ))
+        if ( g_boot_shared_mem.ctrl.crc == boot_shared_mem_calc_crc((const boot_shared_mem_t *) &g_boot_shared_mem ))
         {
-            *p_cnt = g_boot_shared_mem.boot_cnt;
+            *p_cnt = g_boot_shared_mem.data.boot_cnt;
+        }
+        else
+        {
+            status = eBOOT_ERROR_CRC;
+        }
+    }
+    else
+    {
+        status = eBOOT_ERROR;
+    }
+
+    return status;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Get bootloader version
+*
+* @note     Function return "eBOOT_ERROR_CRC" in case of shared memory
+*           data corruption!
+*
+* @param[out]   p_boot_ver  - Bootloader software verion
+* @return       status      - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
+boot_status_t boot_shared_mem_get_boot_ver(uint32_t * const p_boot_ver)
+{
+    boot_status_t status = eBOOT_OK;
+
+    BOOT_ASSERT( NULL != p_boot_ver );
+
+    if ( NULL != p_boot_ver )
+    {
+        // Validate shared memory
+        if ( g_boot_shared_mem.ctrl.crc == boot_shared_mem_calc_crc((const boot_shared_mem_t *) &g_boot_shared_mem ))
+        {
+            *p_boot_ver = g_boot_shared_mem.data.boot_ver;
         }
         else
         {

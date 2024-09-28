@@ -7,8 +7,8 @@
 *@brief     Bootloader Communication
 *@author    Ziga Miklosic
 *@email     ziga.miklosic@gmail.com
-*@date      15.02.2024
-*@version   V0.2.0
+*@date      28.09.2024
+*@version   V1.0.0
 */
 ////////////////////////////////////////////////////////////////////////////////
 /*!
@@ -28,7 +28,6 @@
 #include "boot_com.h"
 #include "../../boot_cfg.h"
 #include "../../boot_if.h"
-
 
 ////////////////////////////////////////////////////////////////////////////////
 // Definitions
@@ -633,16 +632,15 @@ static void boot_parse_connect_rsp(const boot_header_t * const p_header, const u
 ////////////////////////////////////////////////////////////////////////////////
 static void boot_parse_prepare(const boot_header_t * const p_header, const uint8_t * const p_payload)
 {
-    boot_prepare_payload_t payload = {0};
-
     // Unused
     (void) p_header;
 
-    // Parse payload
-    memcpy( &payload, p_payload, sizeof( boot_prepare_payload_t ));
-
-    // Raise callback
-    boot_com_prepare_msg_rcv_cb( payload.fw_size, payload.fw_ver, payload.hw_ver );
+    // Check for correct lenght
+    if ( p_header->field.length == sizeof( ver_image_header_t ))
+    {
+        // Raise callback
+        boot_com_prepare_msg_rcv_cb((const ver_image_header_t *) p_payload );
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1184,18 +1182,14 @@ __BOOT_CFG_WEAK__ void boot_com_connect_rsp_msg_rcv_cb(const boot_msg_status_t m
 /**
 *       Prepare Bootloader Message Reception Callback
 *
-* @param[in]    fw_size     - Firmware size in bytes
-* @param[in]    fw_ver      - Firmware version
-* @param[in]    hw_ver      - Hardware version
+* @param[in]    p_head - Image header
 * @return       void
 */
 ////////////////////////////////////////////////////////////////////////////////
-__BOOT_CFG_WEAK__ void boot_com_prepare_msg_rcv_cb(const uint32_t fw_size, const uint32_t fw_ver, const uint32_t hw_ver)
+__BOOT_CFG_WEAK__ void boot_com_prepare_msg_rcv_cb(const ver_image_header_t * const p_head)
 {
     // Unused params
-    (void) fw_size;
-    (void) fw_ver;
-    (void) hw_ver;
+    (void) p_head;
 
     /**
      *  Leave empty for user application purposes...

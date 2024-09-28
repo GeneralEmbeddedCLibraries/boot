@@ -7,8 +7,8 @@
 *@brief     Bootloader Interface
 *@author    Ziga Miklosic
 *@email     ziga.miklosic@gmail.com
-*@date      15.02.2024
-*@version   V0.2.0
+*@date      28.09.2024
+*@version   V1.0.0
 */
 ////////////////////////////////////////////////////////////////////////////////
 /*!
@@ -35,14 +35,15 @@
 #include <string.h>
 
 // HAL
-#include "stm32g4xx_hal.h"
+#include "stm32l4xx_hal.h"
 
 // Drivers
 #include "drivers/peripheral/gpio/gpio/src/gpio.h"
 #include "drivers/peripheral/flash/flash/src/flash.h"
+#include "drivers/peripheral/iwdt/iwdt/src/iwdt.h"
 
 // Interface
-#include "interface/rs485/rs485.h"
+#include "drivers/peripheral/usbd/usbd/src/usbd.h"
 
 // Middleware
 #include "middleware/cli/cli/src/cli.h"
@@ -88,6 +89,20 @@
     static const uint8_t gu8_iv[] = { 0x45, 0xf2, 0x34, 0x12,0xa3, 0x32, 0x34, 0xfd, 0xab, 0xcc, 0x1c, 0xed, 0x1c, 0x41, 0x20, 0x0f };
 
 #endif
+
+/**
+ *      Public key
+ *
+ *  @note   Generated with OpenSSL tool!
+ */
+static const uint8_t gu8_public_key[64] =
+{
+    0x1c, 0xd6, 0x14, 0x38, 0x06, 0xfc, 0x17, 0x7d, 0x39, 0x9e, 0x0b, 0xa7, 0xcf,
+    0x79, 0xfc, 0x67, 0x77, 0xa2, 0x60, 0x38, 0x08, 0x02, 0xd8, 0xbb, 0xcd, 0x15,
+    0x29, 0x24, 0xc6, 0x3c, 0xb7, 0x78, 0x59, 0x95, 0x30, 0xf9, 0x33, 0x05, 0x21,
+    0x10, 0xe9, 0x73, 0x5f, 0x1a, 0xed, 0x18, 0x12, 0x2f, 0x14, 0x76, 0xae, 0xe5,
+    0x32, 0x61, 0x8f, 0xfd, 0xa8, 0x38, 0x27, 0x6d, 0x76, 0x1f, 0x37, 0xb7
+};
 
 // USER CODE END...
 
@@ -210,7 +225,7 @@ boot_status_t boot_if_init(void)
 
     // USER CODE BEGIN...
 
-    if ( eRS485_OK != rs485_init())
+    if ( eUSBD_OK != usbd_init())
     {
         status = eBOOT_ERROR;
     }
@@ -223,7 +238,7 @@ boot_status_t boot_if_init(void)
 #endif
 
     // Init flash driver
-    if ( eFLASH_OK != flash_init())
+    if ( eFLASH_OK != flash_init( 0U ))
     {
         status = eBOOT_ERROR;
     }
@@ -259,8 +274,8 @@ boot_status_t boot_if_deinit(void)
     // De-init gpio
     gpio_deinit();
 
-    // De-init RS-485
-    rs485_deinit();
+    // De-init usb
+    usbd_deinit();
 
     // Cli de-init
     cli_deinit();
@@ -297,7 +312,7 @@ boot_status_t boot_if_transmit(const uint8_t * const p_data, const uint16_t size
     // USER CODE BEGIN...
 
     // Transmit
-    if ( eRS485_OK != rs485_transmit( p_data, size ))
+    if ( eUSBD_OK != usbd_transmit( p_data, size ))
     {
         status = eBOOT_ERROR;
     }
@@ -324,7 +339,7 @@ boot_status_t boot_if_receive(uint8_t * const p_data)
     // USER CODE BEGIN...
 
     // Receive
-    if ( eRS485_OK != rs485_receive( p_data ))
+    if ( eUSBD_OK != usbd_receive( p_data ))
     {
         status = eBOOT_ERROR;
     }
@@ -347,7 +362,7 @@ boot_status_t boot_if_clear_rx_buf(void)
 
     // USER CODE BEGIN...
 
-    if ( eRS485_OK != rs485_reset_rx_buf())
+    if ( eUSBD_OK != usbd_clear_rx_buf())
     {
         status = eBOOT_ERROR;
     }
@@ -375,7 +390,7 @@ boot_status_t boot_if_flash_write(const uint32_t addr, const uint32_t size, cons
 
     // USER CODE BEGIN...
 
-    if ( eFLASH_OK != flash_write( addr, size, p_data ))
+    if ( eFLASH_OK != flash_write( 0U, addr, size, p_data ))
     {
         status = eBOOT_ERROR;
     }
@@ -403,7 +418,7 @@ boot_status_t boot_if_flash_read(const uint32_t addr, const uint32_t size, uint8
 
     // USER CODE BEGIN...
 
-    if ( eFLASH_OK != flash_read( addr, size, p_data ))
+    if ( eFLASH_OK != flash_read( 0U, addr, size, p_data ))
     {
         status = eBOOT_ERROR;
     }
@@ -430,10 +445,51 @@ boot_status_t boot_if_flash_erase(const uint32_t addr, const uint32_t size)
 
     // USER CODE BEGIN...
 
-    if ( eFLASH_OK != flash_erase( addr, size ))
+    if ( eFLASH_OK != flash_erase( 0U, addr, size ))
     {
         status = eBOOT_ERROR;
     }
+
+    // USER CODE END...
+
+    return status;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Get public key
+*
+*   @note In case of signature is not used return NULL!
+*
+* @return       public key
+*/
+////////////////////////////////////////////////////////////////////////////////
+const uint8_t * boot_if_get_public_key(void)
+{
+    // USER CODE BEGIN...
+
+    return (const uint8_t*) &gu8_public_key;
+
+    // USER CODE END...
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Kick watchdog
+*
+* @note     WDT kick is performed during flash prepare phase as it
+*           takes long time to erase larger memory space.
+*
+* @return       status - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
+boot_status_t boot_if_kick_wdt(void)
+{
+    boot_status_t status = eBOOT_OK;
+
+    // USER CODE BEGIN...
+
+    (void) iwdt_kick();
 
     // USER CODE END...
 
