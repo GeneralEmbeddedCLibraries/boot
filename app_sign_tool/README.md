@@ -4,6 +4,29 @@ Application (Firmware) Signature Tool takes binary file, process it and assemble
 
 Signature tool is invoked in post-build process, after binary file is composed.
 
+Help message:
+```
+>>>app_sign_tool.py --help
+====================================================================
+     Firmware Application Signature Tool V1.0.0
+====================================================================
+usage: app_sign_tool.py [-h] -f bin_in -o bin_out -a app_addr_start [-s] [-k k] [-c] [-git]
+
+Firmware Application Signature Tool V1.0.0
+
+optional arguments:
+  -h, --help         show this help message and exit
+  -f bin_in          Input binary file
+  -o bin_out         Output binary file
+  -a app_addr_start  Start application address
+  -s                 Signing (ECSDA) binary file
+  -k k               Private key for signature
+  -c                 Encrypt (AES-CTR) binary file
+  -git               Store Git SHA to image header
+
+Enjoy the program!
+```
+
 ## **Limitations**
 
 ### **1. Application header**
@@ -33,14 +56,8 @@ Invoke script with *-s* switch in order to enable digital signature of firmware.
 ../"mySrc"/middleware/boot/boot/app_sign_tool/delivery/V1.0.0/app_sign_tool__V1_0_0.exe -f ../${ConfigName}/${ProjName}.bin -o ../${ConfigName}/${ProjName}__BOOT_READY.bin -a 0x08010000 -s -k ../"mySrc"/middleware/boot/private.pem
 ```
 
-// TODO: Git
-
-// TODO: All togheter
-
-// TODO: Help message
-
-
-
-
-py ../Seltron/middleware/boot/boot/app_sign_tool/src/app_sign_tool.py -f ../${ConfigName}/${ProjName}.bin -o ../${ConfigName}/${ProjName}_BOOT_READY.bin -a 0x08010000 -s -k ../Seltron/middleware/boot/private.pem -c -git
-
+## **Putting it all together**
+Use following command to prepare image header, digital signature, firmware encryption and embedding git commit SHA into image header:
+```
+../"mySrc"/middleware/boot/boot/app_sign_tool/delivery/V1.0.0/app_sign_tool__V1_0_0.exe -f ../${ConfigName}/${ProjName}.bin -o ../${ConfigName}/${ProjName}__BOOT_READY.bin -a 0x08010000 -s -k ../"mySrc"/middleware/boot/private.pem -c -git
+```
