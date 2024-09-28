@@ -421,6 +421,8 @@ def aes_encode(plain_data):
  - Digital signatures ensure that only legitimate, trusted firmware can be uploaded to a device
  - Using ECDSA (Elliptic Curve Digital Signature Algoritm) to check signature
 
+![](doc/pic/ecdsa_flow.png)
+
 Using OpenSSL for generate private key:
 ```
 openssl ecparam -name secp256k1 -genkey -noout -out private.pem
