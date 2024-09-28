@@ -358,17 +358,12 @@ def main():
             # Git SHA info
             if git_en:
 
-                GIT_COMMIT_SHA_CMD      = "git rev-parse --short HEAD"
-                commit_sha = subprocess.check_output( GIT_COMMIT_SHA_CMD ).decode("utf-8")[:-1] 
-
-                print("Git SHA: %s" % commit_sha )
-
-                
-
-                #git_sha = "asdsadasdasd"
+                # Get commit SHA
+                GIT_COMMIT_SHA_CMD = "git rev-parse HEAD"
+                commit_sha = subprocess.check_output( GIT_COMMIT_SHA_CMD )[:-1] 
 
                 # Write Git SHA to application header
-                #out_file.write( APP_HEADER_IMAGE_ADDR_ADDR, struct.pack('I', int(git_sha)))
+                out_file.write( APP_HEADER_GIT_SHA_ADDR, commit_sha[:8] )
 
             ######################################################################################
             ## IMAGE PADDING
