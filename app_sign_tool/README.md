@@ -10,7 +10,7 @@ Help message:
 ====================================================================
      Firmware Application Signature Tool V1.0.0
 ====================================================================
-usage: app_sign_tool.py [-h] -f bin_in -o bin_out -a app_addr_start [-s] [-k k] [-c] [-git]
+usage: app_sign_tool.py [-h] -f bin_in -o bin_out -a app_addr_start [-s] [-k private_key] [-c] [-git]
 
 Firmware Application Signature Tool V1.0.0
 
@@ -20,7 +20,7 @@ optional arguments:
   -o bin_out         Output binary file
   -a app_addr_start  Start application address
   -s                 Signing (ECSDA) binary file
-  -k k               Private key for signature
+  -k private_key     Private key for signature
   -c                 Encrypt (AES-CTR) binary file
   -git               Store Git SHA to image header
 

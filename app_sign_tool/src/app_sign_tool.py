@@ -114,7 +114,7 @@ def arg_parser():
     parser.add_argument("-o",   help="Output binary file",            metavar="bin_out",          type=str,   required=True )
     parser.add_argument("-a",   help="Start application address",     metavar="app_addr_start",   type=str,   required=True )
     parser.add_argument("-s",   help="Signing (ECSDA) binary file",   action="store_true",                    required=False )
-    parser.add_argument("-k",   help="Private key for signature",     metavar="k",                            required=False )    
+    parser.add_argument("-k",   help="Private key for signature",     metavar="private_key",                  required=False )    
     parser.add_argument("-c",   help="Encrypt (AES-CTR) binary file", action="store_true",                    required=False )
     parser.add_argument("-git", help="Store Git SHA to image header", action="store_true",                    required=False )
 
