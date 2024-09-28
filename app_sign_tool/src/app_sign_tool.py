@@ -15,6 +15,7 @@
 #################################################################################################
 import argparse
 import shutil
+import subprocess
 
 import os
 import struct
@@ -29,13 +30,12 @@ from ecdsa import SigningKey
 from ecdsa.util import sigencode_string
 from binascii import hexlify
 
-
 #################################################################################################
 ##  DEFINITIONS
 #################################################################################################
 
 # Script version
-MAIN_SCRIPT_VER     = "V0.4.0"
+MAIN_SCRIPT_VER     = "V1.0.0"
 
 # Tool description
 TOOL_DESCRIPTION = \
@@ -110,12 +110,13 @@ def arg_parser():
                                         epilog="Enjoy the program!")
 
     # Add arguments
-    parser.add_argument("-f", help="Input binary file",             metavar="bin_in",           type=str,   required=True )
-    parser.add_argument("-o", help="Output binary file",            metavar="bin_out",          type=str,   required=True )
-    parser.add_argument("-a", help="Start application address",     metavar="app_addr_start",   type=str,   required=True )
-    parser.add_argument("-s", help="Signing (ECSDA) binary file",   action="store_true",                    required=False )
-    parser.add_argument("-k", help="Private key for signature",     metavar="k",                            required=False )    
-    parser.add_argument("-c", help="Encrypt (AES-CTR) binary file", action="store_true",                    required=False )
+    parser.add_argument("-f",   help="Input binary file",             metavar="bin_in",           type=str,   required=True )
+    parser.add_argument("-o",   help="Output binary file",            metavar="bin_out",          type=str,   required=True )
+    parser.add_argument("-a",   help="Start application address",     metavar="app_addr_start",   type=str,   required=True )
+    parser.add_argument("-s",   help="Signing (ECSDA) binary file",   action="store_true",                    required=False )
+    parser.add_argument("-k",   help="Private key for signature",     metavar="k",                            required=False )    
+    parser.add_argument("-c",   help="Encrypt (AES-CTR) binary file", action="store_true",                    required=False )
+    parser.add_argument("-git", help="Store Git SHA to image header", action="store_true",                    required=False )
 
     # Get args
     args = parser.parse_args()
@@ -130,7 +131,7 @@ def arg_parser():
     # Convert to number
     app_addr_start  = int(args["a"], 16)
 
-    return file_in, file_out, app_addr_start, args["c"], args["s"], args["k"]
+    return file_in, file_out, app_addr_start, args["c"], args["s"], args["k"], args["git"]
 
 # ===============================================================================
 # @brief  Calculate CRC-32
@@ -322,7 +323,7 @@ def main():
     print("====================================================================")
 
     # Get arguments
-    file_path_in, file_path_out, app_addr_start, crypto_en, sign_en, private_key = arg_parser()
+    file_path_in, file_path_out, app_addr_start, crypto_en, sign_en, private_key, git_en = arg_parser()
 
     # Check for correct file extension 
     if "bin" != file_path_in.split(".")[-1] or "bin" != file_path_out.split(".")[-1]:
@@ -354,6 +355,20 @@ def main():
             # Write app start address into application header
             out_file.write( APP_HEADER_IMAGE_ADDR_ADDR, struct.pack('I', int(app_addr_start)))
 
+            # Git SHA info
+            if git_en:
+
+                GIT_COMMIT_SHA_CMD      = "git rev-parse --short HEAD"
+                commit_sha = subprocess.check_output( GIT_COMMIT_SHA_CMD ).decode("utf-8")[:-1] 
+
+                print("Git SHA: %s" % commit_sha )
+
+                
+
+                #git_sha = "asdsadasdasd"
+
+                # Write Git SHA to application header
+                #out_file.write( APP_HEADER_IMAGE_ADDR_ADDR, struct.pack('I', int(git_sha)))
 
             ######################################################################################
             ## IMAGE PADDING
