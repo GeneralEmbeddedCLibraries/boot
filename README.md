@@ -565,14 +565,15 @@ root/middleware/boot/boot/"module_space"
 ## **API**
 | API Functions | Description | Prototype |
 | --- | ----------- | ----- |
-| **boot_init**                         | Initialization of bootloader module | boot_status_t boot_init(void) |
-| **boot_hndl**                         | Handle bootloader module | boot_status_t boot_hndl(void) |
-| **boot_get_state**                    | Get current bootlaoder state | boot_state_t boot_get_state(void) |
-| **boot_shared_mem_get_version**       | Get shared memory version | boot_status_t boot_shared_mem_get_version(uint8_t * const p_version) |
-| **boot_shared_mem_set_boot_reason**   | Set shared memory boot version | boot_status_t boot_shared_mem_set_boot_reason(const boot_reason_t reason) |
-| **boot_shared_mem_get_boot_reason**   | Get shared memory boot version | boot_status_t boot_shared_mem_get_boot_reason(boot_reason_t * const p_reason) |
-| **boot_shared_mem_set_boot_cnt**      | Set shared memory boot counter | boot_status_t boot_shared_mem_set_boot_counter(const uint8_t cnt) |
-| **boot_shared_mem_get_boot_cnt**      | Get shared memory boot counter | boot_status_t boot_shared_mem_get_boot_counter(uint8_t * const p_cnt) |
+| **boot_init**                         | Initialization of bootloader module   | boot_status_t boot_init(void) |
+| **boot_hndl**                         | Handle bootloader module              | boot_status_t boot_hndl(void) |
+| **boot_get_state**                    | Get current bootlaoder state          | boot_state_t boot_get_state(void) |
+| **boot_shared_mem_get_version**       | Get shared memory version             | boot_status_t boot_shared_mem_get_version(uint8_t * const p_version) |
+| **boot_shared_mem_set_boot_reason**   | Set shared memory boot version        | boot_status_t boot_shared_mem_set_boot_reason(const boot_reason_t reason) |
+| **boot_shared_mem_get_boot_reason**   | Get shared memory boot version        | boot_status_t boot_shared_mem_get_boot_reason(boot_reason_t * const p_reason) |
+| **boot_shared_mem_set_boot_cnt**      | Set shared memory boot counter        | boot_status_t boot_shared_mem_set_boot_counter(const uint8_t cnt) |
+| **boot_shared_mem_get_boot_cnt**      | Get shared memory boot counter        | boot_status_t boot_shared_mem_get_boot_counter(uint8_t * const p_cnt) |
+| **boot_shared_mem_get_boot_ver**      | Get bootloader version                | boot_status_t boot_shared_mem_get_boot_ver(uint32_t * const p_boot_ver) |
 
 ## **Usage**
 
@@ -584,7 +585,7 @@ root/middleware/boot/boot/"module_space"
 | Configuration | Description |
 | --- | --- |
 | **BOOT_CFG_APP_HEAD_ADDR** 			    | Application header address in flash |
-| **BOOT_CFG_APP_HEAD_SIZE** 			    | Application header size in bytes |
+| **BOOT_CFG_APP_START_ADDR** 			    | Start of application address |
 | **BOOT_CFG_APP_SIZE** 			        | Complete (maximum) application size in bytes |
 | **BOOT_CFG_FW_SIZE_CHECK_EN** 			| Enable/Disable new firmware size check |
 | **BOOT_CFG_FW_VER_CHECK_EN** 			    | Enable/Disable new firmware version compatibility check |
@@ -598,6 +599,8 @@ root/middleware/boot/boot/"module_space"
 | **BOOT_CFG_HW_VER_MINOR** 			    | New firmware hardware compatibility minor version |
 | **BOOT_CFG_HW_VER_DEVELOP** 			    | New firmware hardware compatibility develop version |
 | **BOOT_CFG_HW_VER_TEST** 			        | New firmware hardware compatibility test version |
+| **BOOT_CFG_DIGITAL_SIGN_EN** 			    | Enable/Disable new firmware version digital signature check |
+| **BOOT_CFG_CRYPTION_EN**                  | Enable/Disable firmware binary encryption |
 | **BOOT_CFG_APP_BOOT_CNT_CHECK_EN** 	    | Enable/Disable boot counting check |
 | **BOOT_CFG_BOOT_CNT_LIMIT** 	            | Boot counts limit |
 | **BOOT_CFG_WAIT_AT_STARTUP_MS** 	        | Bootloader back-door entry timeout |
@@ -611,7 +614,6 @@ root/middleware/boot/boot/"module_space"
 | **BOOT_CFG_STATIC_ASSERT**                | Static assert definition |
 | **__BOOT_CFG_WEAK__**                     | Weak compiler directive |
 | **__BOOT_CFG_SHARED_MEM__**               | Shared memory section directive for linker |
-| **BOOT_CFG_CRYPTION_EN**                  | Enable/Disable firmware binary encryption |
 | **BOOT_CFG_DEBUG_EN**                     | Enable/Disable debug mode |
 | **BOOT_CFG_ASSERT_EN**                    | Enable/Disable assertions |
 
