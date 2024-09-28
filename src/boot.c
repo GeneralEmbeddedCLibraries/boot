@@ -761,6 +761,10 @@ static boot_msg_status_t boot_signature_check(const uint8_t * const p_sig, const
             BOOT_DBG_PRINT( "PRE-VALIDATION ERROR: Signature invalid!" );
         }
     }
+#else
+    //Unused
+    (void) p_sig;
+    (void) p_hash;
 #endif
 
     return msg_status;

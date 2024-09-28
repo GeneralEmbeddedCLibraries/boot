@@ -189,8 +189,12 @@ Digital signature enable/disable configuration in ***boot_cfg.h***:
 ```C
 /**
  *      Enable/Disable new firmware version digital signature check
+ *
+ * @note    At prepare command bootloader will check for valid
+ *          digital signature based on hash and signature field in
+ *          new image header.
  */
-#define BOOT_CFG_DIGITAL_SIGN_EN                ( 1 )
+#define BOOT_CFG_DIGITAL_SIGN_EN                ( 0 )
 ```
 
 ## **Catching reboot loops**
@@ -410,6 +414,54 @@ def aes_encode(plain_data):
 ```
 
 **NOTICE: Don't forget to change AES Key and Initial Vector (IV) for your end application!**
+
+
+## **Digital signature**
+ - Digital signature guarantees that the code has not been altered or tampered with during transmission
+ - Digital signatures ensure that only legitimate, trusted firmware can be uploaded to a device -> Improvement over current implementation
+ - Using ECDSA (Elliptic Curve Digital Signature Algoritm) to check signature
+
+Using OpenSSL for generate private key:
+```
+openssl ecparam -name secp256k1 -genkey -noout -out private.pem
+```
+
+To generate public key out of private:
+```
+openssl ec -in private.pem -pubout -out public.pem
+```
+
+To get nice overview of private and public key:
+```
+openssl ec -in private.pem -text -noout
+```
+
+This will output private and public key to output:
+```
+openssl ec -in private.pem -text -noout
+```
+
+![](doc/pic/openssl_key_show.png)
+
+
+Convert public key value that to C code and paste it into ***boot_if.c*** interface file:
+```C
+/**
+ *      Public key
+ *
+ *  @note   Generated with OpenSSL tool!
+ */
+static const uint8_t gu8_public_key[64] =
+{
+    0x1c, 0xd6, 0x14, 0x38, 0x06, 0xfc, 0x17, 0x7d, 0x39, 0x9e, 0x0b, 0xa7, 0xcf,
+    0x79, 0xfc, 0x67, 0x77, 0xa2, 0x60, 0x38, 0x08, 0x02, 0xd8, 0xbb, 0xcd, 0x15,
+    0x29, 0x24, 0xc6, 0x3c, 0xb7, 0x78, 0x59, 0x95, 0x30, 0xf9, 0x33, 0x05, 0x21,
+    0x10, 0xe9, 0x73, 0x5f, 0x1a, 0xed, 0x18, 0x12, 0x2f, 0x14, 0x76, 0xae, 0xe5,
+    0x32, 0x61, 0x8f, 0xfd, 0xa8, 0x38, 0x27, 0x6d, 0x76, 0x1f, 0x37, 0xb7
+};
+```
+
+**NOTICE: Generate your own pair of private and public key!**
 
 
 ## **Dependencies**
