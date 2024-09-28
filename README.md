@@ -458,6 +458,53 @@ static const uint8_t gu8_public_key[64] =
 
 **NOTICE: Generate your own pair of private and public key!**
 
+New firmware digital signature and hash needs to be calculated in post-build proces using some sort of script or program. Following Python snipped provides example how to produce signature and hash using ***ECDSA secp256k1*** method:
+
+```Python
+import hashlib
+from ecdsa import SigningKey
+from ecdsa.util import sigencode_string
+
+# ===============================================================================
+# @brief  Generate ECDSA signature
+#
+# @note     Outputed signature is 64 bytes long!
+#
+# @param[in]    data        - Inputed data to sign
+# @param[in]    key_file    - Private key file location
+# @return       sig         - Digital signature
+# ===============================================================================
+def generate_signature(data, key_file):
+
+    with open(key_file, "r") as f:
+        key_pem = f.read()
+
+    key = SigningKey.from_pem(key_pem)
+    sig = key.sign_deterministic(data, hashfunc=hashlib.sha256, sigencode=sigencode_string)
+
+    return bytearray( sig )
+
+# ===============================================================================
+# @brief  Generate SHA256 hash
+#
+# @note     Outputed hash is 32 bytes long!
+#
+# @param[in]    data - Inputed data to hash 
+# @return       hash - Hash of inputed data
+# ===============================================================================
+def generate_hash(data):
+
+    # Create an SHA-256 hash object
+    sha256_hash = hashlib.sha256()
+
+    # Update the hash object with the data
+    sha256_hash.update(data)
+
+    # Get the hexadecimal digest of the hash
+    hash = sha256_hash.digest()
+
+    return bytearray( hash )
+```
 
 ## **Dependencies**
 
