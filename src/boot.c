@@ -117,6 +117,7 @@ static boot_msg_status_t    boot_hw_ver_check           (const uint32_t hw_ver);
 static boot_msg_status_t    boot_signature_check        (const uint8_t * const p_sig, const uint8_t * const p_hash);
 static void                 boot_init_boot_counter      (void);
 static boot_msg_status_t    boot_prepare_flash          (const uint32_t image_addr, const uint32_t image_size);
+static boot_msg_status_t    boot_pre_validate_image     (const ver_image_header_t * const p_head);
 
 // FSM state handlers
 static void boot_fsm_idle_hndl      (const p_fsm_t fsm_inst);
@@ -838,6 +839,50 @@ static boot_msg_status_t boot_prepare_flash(const uint32_t image_addr, const uin
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
+*       Pre-validate new image
+*
+* @param[in]    p_head      - Image (app) header
+* @return       msg_status  - Status of validation
+*/
+////////////////////////////////////////////////////////////////////////////////
+static boot_msg_status_t boot_pre_validate_image(const ver_image_header_t * const p_head)
+{
+    boot_msg_status_t msg_status = eBOOT_MSG_OK;
+
+    // Validate image header
+    if ( eBOOT_OK == boot_app_header_check( p_head ))
+    {
+        // Check for FW size
+        msg_status |= boot_fw_size_check( p_head->data.image_size );
+
+        // Check for FW version compatibility
+        msg_status |= boot_fw_ver_check( p_head->data.sw_ver );
+
+        // Check for HW version compatibility
+        msg_status |= boot_hw_ver_check( p_head->data.hw_ver );
+
+        // Check for authentic image
+        msg_status |= boot_signature_check((const uint8_t*) &p_head->data.signature, (const uint8_t*) &p_head->data.hash );
+
+        // NOTE: For now only application image is supported
+        // TODO: To support other type of images change that logic!
+        if ( eVER_IMAGE_TYPE_APP != p_head->ctrl.image_type )
+        {
+            msg_status = eBOOT_MSG_ERROR_VALIDATION;
+        }
+    }
+
+    // Image (app) header invalid
+    else
+    {
+        msg_status = eBOOT_MSG_ERROR_VALIDATION;
+    }
+
+    return msg_status;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
 *       IDLE bootloader FSM state
 *
 * @param[in]    fsm_inst - FMS instance
@@ -1031,37 +1076,6 @@ void boot_com_connect_rsp_msg_rcv_cb(const boot_msg_status_t msg_status)
 * @return       void
 */
 ////////////////////////////////////////////////////////////////////////////////
-
-
-
-static boot_msg_status_t boot_pre_validate_image(const ver_image_header_t * const p_head)
-{
-    boot_msg_status_t msg_status = eBOOT_MSG_OK;
-
-    // Check for FW size
-    msg_status |= boot_fw_size_check( p_head->data.image_size );
-
-    // Check for FW version compatibility
-    msg_status |= boot_fw_ver_check( p_head->data.sw_ver );
-
-    // Check for HW version compatibility
-    msg_status |= boot_hw_ver_check( p_head->data.hw_ver );
-
-    // Check for authentic image
-    msg_status |= boot_signature_check((const uint8_t*) &p_head->data.signature, (const uint8_t*) &p_head->data.hash );
-
-    // NOTE: For now only application image is supported
-    // TODO: To support other type of images change that logic!
-    if ( eVER_IMAGE_TYPE_APP != p_head->ctrl.image_type )
-    {
-        msg_status = eBOOT_MSG_ERROR_VALIDATION;
-    }
-
-    return msg_status;
-}
-
-
-
 void boot_com_prepare_msg_rcv_cb(const ver_image_header_t * const p_head)
 {
     boot_msg_status_t msg_status = eBOOT_MSG_OK;
@@ -1069,21 +1083,14 @@ void boot_com_prepare_msg_rcv_cb(const ver_image_header_t * const p_head)
     // In PREPARE state
     if ( eBOOT_STATE_PREPARE == boot_get_state())
     {
-        // Validate image header
-        if ( eBOOT_OK == boot_app_header_check( p_head ))
-        {
-            // Image pre-valudation OK
-            if ( eBOOT_MSG_OK == boot_pre_validate_image( p_head ))
-            {
-                // Prepare flash memory for new image
-                msg_status = boot_prepare_flash( BOOT_CFG_APP_HEAD_ADDR, p_head->data.image_size );
-            }
-        }
+        // Pre-validate image
+        msg_status = boot_pre_validate_image( p_head );
 
-        // Image (app) header invalid
-        else
+        // Image validation OK
+        if ( eBOOT_MSG_OK == msg_status )
         {
-            msg_status = eBOOT_MSG_ERROR_VALIDATION;
+            // Prepare flash memory for new image
+            msg_status = boot_prepare_flash( BOOT_CFG_APP_HEAD_ADDR, p_head->data.image_size );
         }
     }
 
