@@ -6,7 +6,9 @@ Main features of bootloader:
     + Application size check
     + Application SW compatibility check
     + Application HW compatibility check
-    + Downgrade protection
+    + Downgrade protection 
+ - ECDSA Digital signature validation
+ - AES-CTR Image encryption
  - Communication agnostics
  - Sharing data between bootloader and application via *.noinit* RAM section
  - Detection of reboot loop due to corrupted application
@@ -80,6 +82,7 @@ Bootloader support up to four different validation criteria for new application 
  2. Application SW compatibility check
  3. Application HW compatibility check
  4. Downgrade protection
+ 5. Firmware digital signature (ECDSA)
 
 ### **1. Application size check**
 Bootloader can check if new application will fit into reserved application flash by defining maximum application size and enabling app size check.
@@ -173,6 +176,21 @@ Downgrade enable/disable configuration in ***boot_cfg.h***:
  *          has higher version than current, if that macro is enabled!
  */
 #define BOOT_CFG_FW_DOWNGRADE_EN                ( 1 )
+```
+
+### **5. Digital signature - ECDSA**
+Bootloader can detect invalid image by checking its digital signature by enabling *BOOT_CFG_DIGITAL_SIGN_EN*. 
+
+Using Elliptic Curve Digital Signature Algorithm (ECDSA) with a help of external libraries:
+ - [micro_ecc](https://github.com/kmackay/micro-ecc)
+ - [CIFRA](https://github.com/ctz/cifra)
+
+Digital signature enable/disable configuration in ***boot_cfg.h***:
+```C
+/**
+ *      Enable/Disable new firmware version digital signature check
+ */
+#define BOOT_CFG_DIGITAL_SIGN_EN                ( 1 )
 ```
 
 ## **Catching reboot loops**
@@ -399,7 +417,7 @@ def aes_encode(plain_data):
 ### **1. Flash memory map**
 Bootloader expect predefined application binary code as shown in picture. Size of bootloader and application are subject to change to suit SW requirements and are used only for presentation purposes.
 
-![](doc/pic/Flash_MemoryMap_NEW.png)
+![](doc/pic/Flash_MemoryMap.png)
 
 ### **2. Application header**
 Application code must have a ***Application Header*** in order to validate data integritiy of image.
@@ -429,14 +447,14 @@ root/middleware/boot/boot/"module_space"
 ## **API**
 | API Functions | Description | Prototype |
 | --- | ----------- | ----- |
-| **boot_init** | Initialization of bootloader module | boot_status_t boot_init(void) |
-| **boot_hndl** | Handle bootloader module | boot_status_t boot_hndl(void) |
-| **boot_get_state** | Get current bootlaoder state | boot_state_t boot_get_state(void) |
-| **boot_shared_mem_get_version** | Get shared memory version | boot_status_t boot_shared_mem_get_version(uint8_t * const p_version) |
-| **boot_shared_mem_set_boot_reason** | Set shared memory boot version | boot_status_t boot_shared_mem_set_boot_reason(const boot_reason_t reason) |
-| **boot_shared_mem_get_boot_reason** | Get shared memory boot version | boot_status_t boot_shared_mem_get_boot_reason(boot_reason_t * const p_reason) |
-| **boot_shared_mem_set_boot_cnt** | Set shared memory boot counter | boot_status_t boot_shared_mem_set_boot_counter(const uint8_t cnt) |
-| **boot_shared_mem_get_boot_cnt** | Get shared memory boot counter | boot_status_t boot_shared_mem_get_boot_counter(uint8_t * const p_cnt) |
+| **boot_init**                         | Initialization of bootloader module | boot_status_t boot_init(void) |
+| **boot_hndl**                         | Handle bootloader module | boot_status_t boot_hndl(void) |
+| **boot_get_state**                    | Get current bootlaoder state | boot_state_t boot_get_state(void) |
+| **boot_shared_mem_get_version**       | Get shared memory version | boot_status_t boot_shared_mem_get_version(uint8_t * const p_version) |
+| **boot_shared_mem_set_boot_reason**   | Set shared memory boot version | boot_status_t boot_shared_mem_set_boot_reason(const boot_reason_t reason) |
+| **boot_shared_mem_get_boot_reason**   | Get shared memory boot version | boot_status_t boot_shared_mem_get_boot_reason(boot_reason_t * const p_reason) |
+| **boot_shared_mem_set_boot_cnt**      | Set shared memory boot counter | boot_status_t boot_shared_mem_set_boot_counter(const uint8_t cnt) |
+| **boot_shared_mem_get_boot_cnt**      | Get shared memory boot counter | boot_status_t boot_shared_mem_get_boot_counter(uint8_t * const p_cnt) |
 
 ## **Usage**
 

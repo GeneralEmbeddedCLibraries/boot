@@ -12,6 +12,7 @@ Big changes to bootloader concept, not compatible with V0.x.x!
 
 ### Added
  - ECDSA Digital signature validation
+ - AES-CTR Firmware encryption
  - Option to configure pre/post validation of the image based on its header info
  
 ### Changes

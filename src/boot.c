@@ -739,6 +739,8 @@ static boot_msg_status_t boot_signature_check(const uint8_t * const p_sig, const
 {
     boot_msg_status_t msg_status = eBOOT_MSG_OK;
 
+#if ( 1 == BOOT_CFG_DIGITAL_SIGN_EN )
+
     // Create curve context
     const struct uECC_Curve_t * p_curve = uECC_secp256k1();
 
@@ -759,6 +761,7 @@ static boot_msg_status_t boot_signature_check(const uint8_t * const p_sig, const
             BOOT_DBG_PRINT( "PRE-VALIDATION ERROR: Signature invalid!" );
         }
     }
+#endif
 
     return msg_status;
 }
