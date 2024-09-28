@@ -506,6 +506,30 @@ def generate_hash(data):
     return bytearray( hash )
 ```
 
+Later in bootloader new firmware image signature gets *pre-validated* using that generated signature and hash values. C code snipped that does that:
+```C
+// Create curve context
+const struct uECC_Curve_t * p_curve = uECC_secp256k1();
+
+// Public key invalid
+if ( 0 == uECC_valid_public_key( boot_if_get_public_key(), p_curve ))
+{
+    msg_status = eBOOT_MSG_ERROR_VALIDATION;
+    BOOT_DBG_PRINT( "PRE-VALIDATION ERROR: Public key invalid!" );
+}
+
+// Public key valid
+else
+{
+    // Signature invalid
+    if ( 0 == uECC_verify( boot_if_get_public_key(), p_hash, CF_SHA256_HASHSZ, p_sig, p_curve ))
+    {
+        msg_status = eBOOT_MSG_ERROR_SIGNATURE;
+        BOOT_DBG_PRINT( "PRE-VALIDATION ERROR: Signature invalid!" );
+    }
+}
+```
+
 ## **Dependencies**
 
 ### **1. Flash memory map**
