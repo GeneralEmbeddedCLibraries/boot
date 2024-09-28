@@ -116,6 +116,7 @@ static boot_msg_status_t    boot_fw_ver_check           (const uint32_t fw_ver);
 static boot_msg_status_t    boot_hw_ver_check           (const uint32_t hw_ver);
 static boot_msg_status_t    boot_signature_check        (const uint8_t * const p_sig, const uint8_t * const p_hash);
 static void                 boot_init_boot_counter      (void);
+static boot_status_t        boot_prepare_flash          (const uint32_t image_addr, const uint32_t image_size);
 
 // FSM state handlers
 static void boot_fsm_idle_hndl      (const p_fsm_t fsm_inst);
@@ -607,6 +608,9 @@ static void boot_wait(const uint32_t ms)
             // Handle bootloader tasks
             boot_hndl();
 
+            // Process WDT
+            boot_if_kick_wdt();
+
             // Increment safety counter
             safety_cnt++;
         }
@@ -791,6 +795,45 @@ static void boot_init_boot_counter(void)
         (void) boot_shared_mem_set_boot_cnt( cnt );
 
     #endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+*       Prepare internal uC flash for new image
+*
+* @param[in]    image_addr  - Start of new image address
+* @param[in]    image_size  - Size of new image in bytes (note: without image header)
+* @return       status      - Status of operation
+*/
+////////////////////////////////////////////////////////////////////////////////
+static boot_status_t boot_prepare_flash(const uint32_t image_addr, const uint32_t image_size)
+{
+    boot_status_t status = eBOOT_OK;
+
+    // Get end image address
+    // NOTE: -1 as it starts counting from address index 0! Image header is not counted into image size!
+    const uint32_t addr_end  = ( image_addr + (( image_size + sizeof( ver_image_header_t )) - 1U ));
+
+    uint32_t addr_work = image_addr;
+
+    // Do until all space is erased
+    while ( addr_work < addr_end )
+    {
+        // Erase page by page
+        if ( eBOOT_OK != boot_if_flash_erase( addr_work, FLASH_PAGE_SIZE ))
+        {
+            status = eBOOT_ERROR;
+            break;
+        }
+
+        // Increment working address
+        addr_work += FLASH_PAGE_SIZE;
+
+        // Process WDT in between
+        boot_if_kick_wdt();
+    }
+
+    return status;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1013,16 +1056,25 @@ void boot_com_prepare_msg_rcv_cb(const ver_image_header_t * const p_head)
             // Everything OK
             if ( eBOOT_MSG_OK == msg_status )
             {
-                // TODO: Assert if that address is out of valid address space!!!
+                // Prepare flash memory for new image
+                if ( eBOOT_OK != boot_prepare_flash( p_head->data.image_addr, p_head->data.image_size ))
+                {
+                    msg_status = eBOOT_MSG_ERROR_FLASH_ERASE;
+                }
 
-                // Erase page by page and process WDT in between
+
+#if 0
+                // Get start image address
                 const uint32_t addr_start = p_head->data.image_addr;
-                const uint32_t addr_stop  = ( addr_start + (( p_head->data.image_size + sizeof( ver_image_header_t )) - 1U ));  // NOTE: -1 as it starts counting from address index 0!
+
+                // Get end image address
+                // NOTE: -1 as it starts counting from address index 0! Image header is not counted into image size!
+                const uint32_t addr_end  = ( addr_start + (( p_head->data.image_size + sizeof( ver_image_header_t )) - 1U ));
 
                 uint32_t addr_work = addr_start;
 
                 // Do until all space is erased
-                while ( addr_work < addr_stop )
+                while ( addr_work < addr_end )
                 {
                     // Erase page by page
                     if ( eBOOT_OK != boot_if_flash_erase( addr_work, FLASH_PAGE_SIZE ))
@@ -1037,6 +1089,8 @@ void boot_com_prepare_msg_rcv_cb(const ver_image_header_t * const p_head)
                     // Process WDT in between
                     boot_if_kick_wdt();
                 }
+#endif
+
             }
         }
 
@@ -1367,7 +1421,6 @@ boot_status_t boot_init(void)
     }
 
     // Initialize bootloader interfaces
-    // TODO: CHeck if makes sense to split memory interface with communication interface!?
     status |= boot_if_init();
 
     // Iniatilize (handle) boot counter
