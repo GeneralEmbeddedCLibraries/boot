@@ -51,7 +51,7 @@ Application header is expected to be at the begining of firmware binary and stru
 
 For STM32 CubeIDE users go to: *Properties->C/C++ Build->Settings->Build Steps->Post-Build steps*
 
-Example for using signature tool *V1.1.0*, where *${ProjName}.bin* file is inputed and *${ProjName}__BOOT_READY.bin* file is generated for image address "0x08010000":
+Example for using signature tool *V1.1.0*, where *${ProjName}.bin* file is inputed with application start address of "0x08010000":
 ```
 ../"mySrc"/middleware/boot/boot/app_sign_tool/delivery/V1.1.0/app_sign_tool__V1_1_0.exe -f ../${ConfigName}/${ProjName}.bin -a 0x08010000
 ```
@@ -81,6 +81,6 @@ Use following command to prepare image header, digital signature, firmware encry
 The script creates an *Output* directory in the same location as the input file. Within this directory, files are organized into subfolders based on the software version extracted from the image (application) header.
 
 Each output includes three files:
- - DFU-ready application – prepared for Device Firmware Update.
- - Open (non-encrypted) application – intended for debugging with the bootloader.
- - Production-ready image – a merged file containing both the application and the bootloader, suitable for final deployment.
+ - ***DFU-ready application*** – prepared for Device Firmware Update.
+ - ***Open (non-encrypted) application*** – intended for debugging with the bootloader.
+ - ***Production-ready image*** – a merged file containing both the application and the bootloader, suitable for mass production
