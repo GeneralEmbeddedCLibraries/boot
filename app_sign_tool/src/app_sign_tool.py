@@ -643,8 +643,8 @@ def main():
                 # Success info
                 print("SUCCESS: Production ready file generated!")
             else:
-                print("WARNING: Bootloader hex file not found in the \"st_boot\" module configuration space.")
-                print("INFO: To generate a production-ready file, ensure the bootloader hex file is placed in the \"st_boot\" module configuration directory.")
+                print("WARNING: Bootloader hex file not found in the \"boot\" module configuration space.")
+                print("INFO: To generate a production-ready file, ensure the bootloader hex file is placed in the \"boot\" module configuration directory.")
 
             ######################################################################################
             ## README
