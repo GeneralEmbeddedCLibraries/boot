@@ -2,7 +2,6 @@
 
 This Python script, app_sign_tool.py, is a command-line utility designed to prepare firmware application binaries for deployment. It processes a raw binary file, populates its header with crucial metadata, and can optionally apply cryptographic operations such as digital signing and encryption. Finally, it can merge the processed application with a bootloader to generate a production-ready .hex file.
 
-Look at the [Revision](https://github.com/GeneralEmbeddedCLibraries/revision) module for more informations about application header.
 
 Signature tool is invoked in post-build process, after binary file is composed.
 
@@ -36,6 +35,12 @@ Enjoy the program!
  - ***CRC Calculation***: Computes a CRC-8 for the header and a CRC-32 for the application image to ensure data integrity.
  - ***Production File Generation***: Merges the processed application with a bootloader .hex file to create a single, production-ready .hex file.
  - ***Release Information***: Generates a detailed _release_info.txt file containing metadata about the build, including timestamps, machine details, and input/output filenames.
+
+## **Dependencies**
+
+### **Revision** module
+Script follows [Revision](https://github.com/GeneralEmbeddedCLibraries/revision) module application header structure. 
+
 
 ## **Limitations**
 
