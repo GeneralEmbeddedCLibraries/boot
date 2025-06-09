@@ -1,12 +1,12 @@
-## Copyright (c) 2023 Ziga Miklosic
+## Copyright (c) 2025 Ziga Miklosic
 ## All Rights Reserved
 #################################################################################################
 ##
 ## @file:       app_sign_tool.py
 ## @brief:      This script fills up application header informations
-## @date:		20.08.2024
+## @date:		09.06.2025
 ## @author:		Ziga Miklosic
-## @version:    V0.4.0
+## @version:    V1.1.0
 ##
 #################################################################################################
 
@@ -40,7 +40,7 @@ from intelhex import IntelHex
 #################################################################################################
 
 # Script version
-MAIN_SCRIPT_VER     = "V1.0.0"
+MAIN_SCRIPT_VER     = "V1.1.0"
 
 # Tool description
 TOOL_DESCRIPTION = \
@@ -167,7 +167,6 @@ def arg_parser():
 
     # Add arguments
     parser.add_argument("-f",   help="Input binary file",             metavar="bin_in",           type=str,   required=True )
-    parser.add_argument("-o",   help="Output binary file",            metavar="bin_out",          type=str,   required=True )
     parser.add_argument("-a",   help="Start application address",     metavar="app_addr_start",   type=str,   required=True )
     parser.add_argument("-s",   help="Signing (ECSDA) binary file",   action="store_true",                    required=False )
     parser.add_argument("-k",   help="Private key for signature",     metavar="private_key",                  required=False )    
@@ -182,12 +181,11 @@ def arg_parser():
 
     # Get arguments
     file_in         = args["f"]
-    file_out        = args["o"]
 
     # Convert to number
     app_addr_start  = int(args["a"], 16)
 
-    return file_in, file_out, app_addr_start, args["c"], args["s"], args["k"], args["git"]
+    return file_in, app_addr_start, args["c"], args["s"], args["k"], args["git"]
 
 # ===============================================================================
 # @brief  Calculate CRC-32
@@ -412,10 +410,10 @@ def main():
     print("====================================================================")
 
     # Get arguments
-    file_path_in, file_path_out, app_addr_start, crypto_en, sign_en, private_key, git_en = arg_parser()
+    file_path_in, app_addr_start, crypto_en, sign_en, private_key, git_en = arg_parser()
 
     # Check for correct file extension 
-    if "bin" != file_path_in.split(".")[-1] or "bin" != file_path_out.split(".")[-1]:
+    if "bin" != file_path_in.split(".")[-1]:
         print( "ERROR: Invalid file format" )
         raise RuntimeError 
     
