@@ -431,6 +431,9 @@ static bool boot_timeout_check(boot_parser_t * const p_parser)
         {
             timeout = true;
 
+            // Reset interface reception buffer
+            boot_if_clear_rx_buf();
+
             // Reset parser
             p_parser->buf.idx = 0;
             p_parser->mode = eBOOT_PARSER_IDLE;
