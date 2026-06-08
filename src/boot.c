@@ -1,4 +1,4 @@
-// Copyright (c) 2024 Ziga Miklosic
+// Copyright (c) 2026 Ziga Miklosic
 // All Rights Reserved
 // This software is under MIT licence (https://opensource.org/licenses/MIT)
 ////////////////////////////////////////////////////////////////////////////////
@@ -7,8 +7,8 @@
 *@brief     Bootloader
 *@author    Ziga Miklosic
 *@email     ziga.miklosic@gmail.com
-*@date      28.09.2024
-*@version   V1.0.0
+*@date      08.06.2026
+*@version   V1.1.0
 */
 ////////////////////////////////////////////////////////////////////////////////
 /*!
@@ -1420,20 +1420,24 @@ boot_status_t boot_init(void)
     // No reason to stay in bootloader
     if ( eBOOT_REASON_NONE == g_boot_shared_mem.data.boot_reason )
     {
-        // Application image validated OK
-        if ( eBOOT_OK == boot_fw_image_validate())
+        // Try to enter application 3 times
+        for ( uint8_t try = 0; try < 3; try++ )
         {
-            // Back door entry for bootloader
-            boot_wait( BOOT_CFG_WAIT_AT_STARTUP_MS );
-
-            // Check if reason has change from the back door
-            if ( eBOOT_REASON_NONE == g_boot_shared_mem.data.boot_reason )
+            // Application image validated OK
+            if ( eBOOT_OK == boot_fw_image_validate())
             {
-                // Jump to application
-                boot_start_application();
-            }
+                // Back door entry for bootloader
+                boot_wait( BOOT_CFG_WAIT_AT_STARTUP_MS );
 
-            // This line is not reached as CPU starts executing application code...
+                // Check if reason has change from the back door
+                if ( eBOOT_REASON_NONE == g_boot_shared_mem.data.boot_reason )
+                {
+                    // Jump to application
+                    boot_start_application();
+                }
+
+                // This line is not reached as CPU starts executing application code...
+            }
         }
     }
     else

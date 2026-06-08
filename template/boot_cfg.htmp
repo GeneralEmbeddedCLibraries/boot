@@ -1,4 +1,4 @@
-// Copyright (c) 2024 Ziga Miklosic
+// Copyright (c) 2026 Ziga Miklosic
 // All Rights Reserved
 // This software is under MIT licence (https://opensource.org/licenses/MIT)
 ////////////////////////////////////////////////////////////////////////////////
@@ -7,8 +7,8 @@
 *@brief     Bootloader Configuration
 *@author    Ziga Miklosic
 *@email     ziga.miklosic@gmail.com
-*@date      28.09.2024
-*@version   V1.0.0
+*@date      08.06.2026
+*@version   V1.1.0
 */
 ////////////////////////////////////////////////////////////////////////////////
 /**
@@ -34,7 +34,7 @@
 #include <assert.h>
 
 // HAL
-#include "stm32l4xx_hal.h"
+#include "stm32g4xx_hal.h"
 
 // debug port
 #include "middleware/cli/cli/src/cli.h"
@@ -50,7 +50,7 @@
 /**
  *      Application header address in flash
  */
-#define BOOT_CFG_APP_HEAD_ADDR                  ( 0x08010000 )
+#define BOOT_CFG_APP_HEAD_ADDR                  ( 0x08008000 )
 
 /**
  *      Start of application address
@@ -63,7 +63,7 @@
  *          application start aka. vector table. Therefore application start
  *          address might not be at the end of application header!
  */
-#define BOOT_CFG_APP_START_ADDR                 ( 0x08010200 )
+#define BOOT_CFG_APP_START_ADDR                 ( 0x08008200 )
 
 /**
  *      Maximum allowed application size
@@ -72,7 +72,7 @@
  *
  *  Unit: byte
  */
-#define BOOT_CFG_APP_SIZE_MAX                   ( 446U * 1024U )   // NOTE: 478kB = 512kB (Full flash) - 64kB (bootloader) - 2kB (DCT)
+#define BOOT_CFG_APP_SIZE_MAX                   (( 512U - 32U ) * 1024U )
 
 /**
  *      Enable/Disable new firmware size check
@@ -185,16 +185,16 @@
  *
  *  Unit: ms
  */
-#define BOOT_CFG_PREPARE_IDLE_TIMEOUT_MS        ( 5000U )
-#define BOOT_CFG_FLASH_IDLE_TIMEOUT_MS          ( 100U )
-#define BOOT_CFG_EXIT_IDLE_TIMEOUT_MS           ( 5000U )
+#define BOOT_CFG_PREPARE_IDLE_TIMEOUT_MS        ( 4000U )
+#define BOOT_CFG_FLASH_IDLE_TIMEOUT_MS          ( 500U )
+#define BOOT_CFG_EXIT_IDLE_TIMEOUT_MS           ( 1000U )
 
 /**
  *      Reception buffer size
  *
  *  Unit: byte
  */
-#define BOOT_CFG_RX_BUF_SIZE                    ( 8 * 1024 )
+#define BOOT_CFG_RX_BUF_SIZE                    ( 1024 )
 
 /**
  *      Maximum size of flash data payload command

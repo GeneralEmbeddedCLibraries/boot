@@ -1,12 +1,12 @@
-## Copyright (c) 2023 Ziga Miklosic
+## Copyright (c) 2025 Ziga Miklosic
 ## All Rights Reserved
 #################################################################################################
 ##
 ## @file:       app_sign_tool.py
 ## @brief:      This script fills up application header informations
-## @date:		20.08.2024
+## @date:		09.06.2025
 ## @author:		Ziga Miklosic
-## @version:    V0.4.0
+## @version:    V1.1.0
 ##
 #################################################################################################
 
@@ -16,8 +16,12 @@
 import argparse
 import shutil
 import subprocess
-
+import argparse
+import subprocess
+import datetime
 import os
+import sys
+import platform
 import struct
 
 import binascii
@@ -29,13 +33,14 @@ import hashlib
 from ecdsa import SigningKey
 from ecdsa.util import sigencode_string
 from binascii import hexlify
+from intelhex import IntelHex
 
 #################################################################################################
 ##  DEFINITIONS
 #################################################################################################
 
 # Script version
-MAIN_SCRIPT_VER     = "V1.0.0"
+MAIN_SCRIPT_VER     = "V1.1.0"
 
 # Tool description
 TOOL_DESCRIPTION = \
@@ -93,10 +98,61 @@ PAD_VALUE                       = 0x00
 # pad block size.
 PAD_BLOCK_SIZE_BYTE             = 64 #bytes 
 
+# Output directory name
+OUTPUT_DIR_NAME                = "Outputs"
 
 #################################################################################################
 ##  FUNCTIONS
 #################################################################################################
+
+# ===============================================================================
+# @brief:   Get current year
+#
+# @return:  current year
+# ===============================================================================  
+def get_year():
+    return int(datetime.datetime.now().year)
+
+# ===============================================================================
+# @brief:   Get current month
+#
+# @return:  current month
+# =============================================================================== 
+def get_month():
+    return int(datetime.datetime.now().month)
+
+# ===============================================================================
+# @brief:   Get current day
+#
+# @return:  current day
+# =============================================================================== 
+def get_day():
+    return int(datetime.datetime.now().day)
+
+# ===============================================================================
+# @brief:   Get current hour
+#
+# @return:  current hour
+# =============================================================================== 
+def get_hour():
+    return int(datetime.datetime.now().hour)
+
+# ===============================================================================
+# @brief:   Get current minute
+#
+# @return:  current minute
+# =============================================================================== 
+def get_minute():
+    return int(datetime.datetime.now().minute)
+
+# ===============================================================================
+# @brief:   Get current second
+#
+# @return:  current second
+# =============================================================================== 
+def get_second():
+    return int(datetime.datetime.now().second)
+
 
 # ===============================================================================
 # @brief:   Argument parser
@@ -111,7 +167,6 @@ def arg_parser():
 
     # Add arguments
     parser.add_argument("-f",   help="Input binary file",             metavar="bin_in",           type=str,   required=True )
-    parser.add_argument("-o",   help="Output binary file",            metavar="bin_out",          type=str,   required=True )
     parser.add_argument("-a",   help="Start application address",     metavar="app_addr_start",   type=str,   required=True )
     parser.add_argument("-s",   help="Signing (ECSDA) binary file",   action="store_true",                    required=False )
     parser.add_argument("-k",   help="Private key for signature",     metavar="private_key",                  required=False )    
@@ -126,12 +181,11 @@ def arg_parser():
 
     # Get arguments
     file_in         = args["f"]
-    file_out        = args["o"]
 
     # Convert to number
     app_addr_start  = int(args["a"], 16)
 
-    return file_in, file_out, app_addr_start, args["c"], args["s"], args["k"], args["git"]
+    return file_in, app_addr_start, args["c"], args["s"], args["k"], args["git"]
 
 # ===============================================================================
 # @brief  Calculate CRC-32
@@ -195,6 +249,39 @@ def aes_encode(plain_data):
 
     # Encode
     return cipher.encrypt( bytearray( plain_data ))
+
+# ===============================================================================
+# @brief:   Find bootloader
+#
+# @return:      args
+# ===============================================================================
+def find_bootloader_image():
+
+    boot_file = None
+
+    # Get this file path
+    if getattr(sys, 'frozen', False):  # Check if the program is run as a bundle
+        file_dir = os.path.dirname(sys.executable)  # Get the directory of the executable
+    else:
+        # If run as a script, get the directory of the script
+        file_dir = os.path.dirname(os.path.abspath(__file__))
+
+    # Get path to DFU_BLE configuration directory
+    dfu_dir = "/".join( file_dir.split("\\")[0:file_dir.split("\\").index("boot")+1] )
+
+    # Check all files is dfu module config space
+    for file in os.listdir( dfu_dir ):
+        try:
+            # Get file extension
+            file_ext = file.split(".")[1]
+
+            # Check for HEX images
+            if "hex" == file_ext:
+                boot_file = dfu_dir + "/" + file
+        except:
+            pass
+
+    return boot_file
 
 # ===============================================================================
 # @brief  Binary file Class
@@ -323,10 +410,10 @@ def main():
     print("====================================================================")
 
     # Get arguments
-    file_path_in, file_path_out, app_addr_start, crypto_en, sign_en, private_key, git_en = arg_parser()
+    file_path_in, app_addr_start, crypto_en, sign_en, private_key, git_en = arg_parser()
 
     # Check for correct file extension 
-    if "bin" != file_path_in.split(".")[-1] or "bin" != file_path_out.split(".")[-1]:
+    if "bin" != file_path_in.split(".")[-1]:
         print( "ERROR: Invalid file format" )
         raise RuntimeError 
     
@@ -336,6 +423,28 @@ def main():
     
     # Both files are binary
     else:
+
+        # Get software version from inputed binary file
+        in_file = BinFile( file_path_in, access=BinFile.READ_ONLY)
+        sw_ver = in_file.read( APP_HEADER_SW_VER_ADDR, 4 )
+
+        # Add version to output directory name
+        global OUTPUT_DIR_NAME
+        if 0 != sw_ver[0]:
+            OUTPUT_DIR_NAME += "/V%s.%s.%s.%s" % (sw_ver[3], sw_ver[2], sw_ver[1], sw_ver[0])
+        else:
+            OUTPUT_DIR_NAME += "/V%s.%s.%s" % (sw_ver[3], sw_ver[2], sw_ver[1])
+
+        # Check if output directory exists, if not, create it
+        if not os.path.exists(OUTPUT_DIR_NAME):
+            os.makedirs(OUTPUT_DIR_NAME)
+
+        # Create output file
+        if 0 != sw_ver[0]:
+            file_path_out = OUTPUT_DIR_NAME + "/" + file_path_in.split("/")[-1].split(".")[0] + "__V%s_%s_%s_%s" % (sw_ver[3], sw_ver[2], sw_ver[1], sw_ver[0]) + ".bin"
+        else:
+            file_path_out = OUTPUT_DIR_NAME + "/" + file_path_in.split("/")[-1].split(".")[0] + "__V%s_%s_%s" % (sw_ver[3], sw_ver[2], sw_ver[1]) + ".bin"
+
         # Copy inputed binary file
         shutil.copyfile( file_path_in, file_path_out )
 
@@ -438,6 +547,24 @@ def main():
 
 
             ######################################################################################
+            ## NON-CRYPTED FILE 
+            # (used for debugging with bootloader and for production ready file generation)
+            ######################################################################################
+            non_crypted_out_file_path = OUTPUT_DIR_NAME + "/" + file_path_out.split("/")[-1].split(".")[0] + "_NON_CRYPTED.bin"
+
+            # Close the output file before copying
+            out_file.file.close()
+
+            # Copy inputed binary file
+            shutil.copyfile( file_path_out, non_crypted_out_file_path )
+
+            # Reopen the output file after copying
+            out_file = BinFile(file_path_out, access=BinFile.READ_WRITE)
+            
+            non_crypted_out_file = BinFile( non_crypted_out_file_path, access=BinFile.READ_WRITE)
+
+
+            ######################################################################################
             ## IMAGE ENCRYPTION
             ######################################################################################
 
@@ -445,7 +572,8 @@ def main():
             if crypto_en:
 
                 # Set encryption type 
-                out_file.write( APP_HEADER_ENC_TYPE_ADDR, [EncType.AES_CTR] )  
+                out_file.write( APP_HEADER_ENC_TYPE_ADDR, [EncType.AES_CTR] ) 
+                non_crypted_out_file.write( APP_HEADER_ENC_TYPE_ADDR, [EncType.AES_CTR] )   
 
                 # Encrypt application part, skip application header
                 #file_crypted_out.write( APP_HEADER_SIZE_BYTE, aes_encode( out_file.read( APP_HEADER_SIZE_BYTE, out_file.size() - APP_HEADER_SIZE_BYTE )))
@@ -460,10 +588,12 @@ def main():
 
                 # Write encrypted app CRC into application header
                 out_file.write( APP_HEADER_ENC_IMAGE_CRC_ADDR, struct.pack('I', int(app_crc)))
+                non_crypted_out_file.write( APP_HEADER_ENC_IMAGE_CRC_ADDR, struct.pack('I', int(app_crc)))
 
             else:
                 # Set encryption type
                 out_file.write( APP_HEADER_ENC_TYPE_ADDR, [EncType.NONE] ) 
+                non_crypted_out_file.write( APP_HEADER_ENC_TYPE_ADDR, [EncType.NONE] ) 
 
             ######################################################################################
             ## LAST STEP IS TO CALCULATE IMAGE (APP) HEADER CRC 
@@ -475,9 +605,94 @@ def main():
 
             # Write application header crc
             out_file.write( APP_HEADER_CRC_ADDR, [app_header_crc] )
+            non_crypted_out_file.write( APP_HEADER_CRC_ADDR, [app_header_crc] )
 
             # Success info
-            print("SUCCESS: Image (application) header successfully filled!")            
+            print("SUCCESS: Image (application) header successfully filled!")   
+
+            # Close files   
+            out_file.file.close()
+            non_crypted_out_file.file.close()
+         
+
+            ######################################################################################
+            ## GENERATE PRODUCTION READY FILE
+            ######################################################################################
+
+            # Find bootloader file
+            boot_file = find_bootloader_image()
+
+            if None is not boot_file:
+
+                # Load bootloader hex
+                ih = IntelHex()
+                ih.loadhex( boot_file )
+
+                # Load application binary at specified offset
+                with open(non_crypted_out_file_path, "rb") as f:
+                    app_data = f.read()
+                    ih.frombytes(app_data, offset=app_addr_start)
+
+                # Write the merged hex file
+                if 0 != sw_ver[0]:
+                    production_out_file_path = OUTPUT_DIR_NAME + "/" + file_path_in.split("/")[-1].split(".")[0] + "_boot__V%s_%s_%s_%s" % (sw_ver[3], sw_ver[2], sw_ver[1], sw_ver[0]) + ".hex"
+                else:
+                    production_out_file_path = OUTPUT_DIR_NAME + "/" + file_path_in.split("/")[-1].split(".")[0] + "_boot__V%s_%s_%s" % (sw_ver[3], sw_ver[2], sw_ver[1]) + ".hex"
+                ih.write_hex_file(production_out_file_path)
+
+                # Success info
+                print("SUCCESS: Production ready file generated!")
+            else:
+                print("WARNING: Bootloader hex file not found in the \"boot\" module configuration space.")
+                print("INFO: To generate a production-ready file, ensure the bootloader hex file is placed in the \"boot\" module configuration directory.")
+
+            ######################################################################################
+            ## README
+            ######################################################################################
+            
+            # Generate release info file name
+            if 0 != sw_ver[0]:
+                release_info_file_path = OUTPUT_DIR_NAME + "/" + file_path_in.split("/")[-1].split(".")[0] + "_release_info" + "__V%s_%s_%s_%s" % (sw_ver[3], sw_ver[2], sw_ver[1], sw_ver[0]) + ".txt"
+            else:
+                release_info_file_path = OUTPUT_DIR_NAME + "/" + file_path_in.split("/")[-1].split(".")[0] + "_release_info" + "__V%s_%s_%s" % (sw_ver[3], sw_ver[2], sw_ver[1]) + ".txt"
+
+            # Generate release info file
+            path = "/".join( file_path_in.split("/")[:-1] )
+            readme_file = open( release_info_file_path, "w" )
+
+            # Fill with informations
+            readme_file.write( "======================================================================================================\n")
+            readme_file.write( "        RELEASE PACKAGE INFORMATIONS\n")
+            readme_file.write( "======================================================================================================\n")
+            readme_file.write("     File: %s\n"% release_info_file_path.split("/")[-1] )
+            readme_file.write("     Date: %02d.%02d.%04d\n"% ( get_day(), get_month(), get_year()))
+            readme_file.write("     Time: %02d:%02d:%02d\n"% ( get_hour(), get_minute(), get_second()))
+            readme_file.write("\n")
+            readme_file.write("    PC INFORMATIONS\n" )
+            readme_file.write(" Username: %s\n" % os.getenv("USERNAME"))
+            readme_file.write("  PC name: %s\n" % os.getenv("COMPUTERNAME"))
+            readme_file.write("       OS: %s\n" % platform.platform())
+            readme_file.write("======================================================================================================\n")
+            readme_file.write("    INPUTED FILES\n")
+            readme_file.write(" Application firmware file: %s\n" % file_path_in )
+            if None is not boot_file:
+                readme_file.write("  Bootloader firmware file: %s\n" % boot_file.split("/")[-1] )
+            readme_file.write("======================================================================================================\n")
+            readme_file.write("    DFU RELEASE FILE\n")
+            readme_file.write(" DFU release file: %s\n" % file_path_out.split("/")[-1])
+            readme_file.write("\n")
+            readme_file.write("NOTE: This file is intended for use with the dedicated bootloader only! \n")
+            readme_file.write("======================================================================================================\n")
+            
+            if None is not boot_file:
+                readme_file.write("    PRODUCTION READY FILE\n")
+                readme_file.write(" Production ready file: %s\n" % production_out_file_path.split("/")[-1])
+                readme_file.write("\n")
+                readme_file.write("NOTE: This file is intended for production use only!\nIt contains both the bootloader and the application in an unencrypted format.\nEnsure this file is handled securely to prevent unauthorized access or modification.\n")
+                readme_file.write("======================================================================================================\n")
+
+            # Close file
+            readme_file.close()
 
         else:
             print( "ERROR: Application header version not supported!" ) 

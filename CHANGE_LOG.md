@@ -5,6 +5,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project/module adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
+## V1.1.0 - 08.06.2026
+
+### Added
+ - Added multiple tries to enter application at startup
+ - New release of application signature tool: *app_sign_tool__V1_1_0.exe*
+
+### Fixed
+ - Added missing rx buffer reseting
+
+### Issues
+ - Fix debug message printout (CLI code is to big, make it lightweight)
+
+---
 ## V1.0.0 - 28.09.2024
 
 ### Notice

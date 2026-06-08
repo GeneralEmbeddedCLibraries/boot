@@ -1,4 +1,4 @@
-// Copyright (c) 2024 Ziga Miklosic
+// Copyright (c) 2026 Ziga Miklosic
 // All Rights Reserved
 // This software is under MIT licence (https://opensource.org/licenses/MIT)
 ////////////////////////////////////////////////////////////////////////////////
@@ -7,8 +7,8 @@
 *@brief     Bootloader Communication
 *@author    Ziga Miklosic
 *@email     ziga.miklosic@gmail.com
-*@date      28.09.2024
-*@version   V1.0.0
+*@date      08.06.2026
+*@version   V1.1.0
 */
 ////////////////////////////////////////////////////////////////////////////////
 /*!
@@ -430,6 +430,9 @@ static bool boot_timeout_check(boot_parser_t * const p_parser)
         if ((uint32_t) ( BOOT_GET_SYSTICK() - p_parser->last_timestamp ) >= BOOT_COM_IDLE_TIMEOUT_MS )
         {
             timeout = true;
+
+            // Reset interface reception buffer
+            boot_if_clear_rx_buf();
 
             // Reset parser
             p_parser->buf.idx = 0;
