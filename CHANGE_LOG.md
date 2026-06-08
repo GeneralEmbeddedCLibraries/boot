@@ -14,6 +14,9 @@ and this project/module adheres to [Semantic Versioning](https://semver.org/spec
 ### Fixed
  - Added missing rx buffer reseting
 
+### Issues
+ - Fix debug message printout (CLI code is to big, make it lightweight)
+
 ---
 ## V1.0.0 - 28.09.2024
 
