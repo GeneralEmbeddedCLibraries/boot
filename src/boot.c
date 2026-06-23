@@ -1420,8 +1420,8 @@ boot_status_t boot_init(void)
     // No reason to stay in bootloader
     if ( eBOOT_REASON_NONE == g_boot_shared_mem.data.boot_reason )
     {
-        // Try to enter application 3 times
-        for ( uint8_t try = 0; try < 3; try++ )
+        // Try to enter application 5 times
+        for ( uint8_t try = 0; try < 5; try++ )
         {
             // Application image validated OK
             if ( eBOOT_OK == boot_fw_image_validate())
@@ -1438,6 +1438,9 @@ boot_status_t boot_init(void)
 
                 // This line is not reached as CPU starts executing application code...
             }
+
+            // Wait before start again
+            boot_wait( 100U );
         }
     }
     else
