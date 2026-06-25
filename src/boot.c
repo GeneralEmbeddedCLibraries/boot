@@ -1421,7 +1421,7 @@ boot_status_t boot_init(void)
     if ( eBOOT_REASON_NONE == g_boot_shared_mem.data.boot_reason )
     {
         // Try to enter application 5 times
-        for ( uint8_t try = 0; try < 5; try++ )
+        for ( uint8_t try = 0; try < 5U; try++ )
         {
             // Application image validated OK
             if ( eBOOT_OK == boot_fw_image_validate())
@@ -1440,7 +1440,7 @@ boot_status_t boot_init(void)
             }
 
             // Wait before start again
-            boot_wait( 100U );
+            boot_wait( 20U );
         }
     }
     else
